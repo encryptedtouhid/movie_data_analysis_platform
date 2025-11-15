@@ -104,9 +104,7 @@ class DataProcessor(BaseProcessor):
     ) -> None:
         file_path: Optional[Path] = self._find_file(directory, filenames)
         if file_path:
-            df: pd.DataFrame = self._read_file(file_path)
-            if not all(col in df.columns for col in ['movieId', 'userId', 'title', 'rating', 'tag', 'genres', 'timestamp']):
-                df.columns = columns
+            df: pd.DataFrame = self._read_file(file_path, columns)
             output_path: Path = self.data_processed_path / output_name
 
             if len(df) > self.chunk_size:
@@ -123,15 +121,26 @@ class DataProcessor(BaseProcessor):
                 return file_path
         return None
 
-    def _read_file(self, file_path: Path) -> pd.DataFrame:
+    def _read_file(self, file_path: Path, columns: Optional[List[str]] = None) -> pd.DataFrame:
         try:
             if file_path.suffix == '.dat':
-                return pd.read_csv(
-                    file_path,
-                    sep=self.data_delimiter,
-                    encoding='latin-1',
-                    engine='python'
-                )
+                if columns:
+                    return pd.read_csv(
+                        file_path,
+                        sep=self.data_delimiter,
+                        encoding='latin-1',
+                        engine='python',
+                        header=None,
+                        names=columns
+                    )
+                else:
+                    return pd.read_csv(
+                        file_path,
+                        sep=self.data_delimiter,
+                        encoding='latin-1',
+                        engine='python',
+                        header=None
+                    )
             else:
                 return pd.read_csv(file_path, encoding='latin-1', low_memory=False)
         except Exception as e:
@@ -148,12 +157,31 @@ class DataProcessor(BaseProcessor):
 
             if path.suffix == '.dat':
                 logger.debug(f"Reading .dat file with delimiter '{self.data_delimiter}'")
-                df: pd.DataFrame = pd.read_csv(
-                    path,
-                    sep=self.data_delimiter,
-                    encoding='latin-1',
-                    engine='python'
-                )
+                columns: Optional[List[str]] = None
+                if 'movies' in path.name.lower():
+                    columns = ['movieId', 'title', 'genres']
+                elif 'ratings' in path.name.lower():
+                    columns = ['userId', 'movieId', 'rating', 'timestamp']
+                elif 'tags' in path.name.lower():
+                    columns = ['userId', 'movieId', 'tag', 'timestamp']
+
+                if columns:
+                    df: pd.DataFrame = pd.read_csv(
+                        path,
+                        sep=self.data_delimiter,
+                        encoding='latin-1',
+                        engine='python',
+                        header=None,
+                        names=columns
+                    )
+                else:
+                    df = pd.read_csv(
+                        path,
+                        sep=self.data_delimiter,
+                        encoding='latin-1',
+                        engine='python',
+                        header=None
+                    )
             elif path.suffix == '.csv':
                 logger.debug("Reading .csv file")
                 df = pd.read_csv(path, encoding='latin-1', low_memory=False)
