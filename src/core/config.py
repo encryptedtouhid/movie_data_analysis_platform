@@ -17,6 +17,8 @@ class Settings(BaseModel):
 
     data_raw_path: str = os.getenv("DATA_RAW_PATH", "data/raw")
     data_processed_path: str = os.getenv("DATA_PROCESSED_PATH", "data/processed")
+    data_temp_path: str = os.getenv("DATA_TEMP_PATH", "data/temp")
+    movie_lens_dataset_url: str = os.getenv("MOVIE_LENS_DATASET_URL", "")
     movies_file: str = os.getenv("MOVIES_FILE", "movies.dat")
     ratings_file: str = os.getenv("RATINGS_FILE", "ratings.dat")
     tags_file: str = os.getenv("TAGS_FILE", "tags.dat")

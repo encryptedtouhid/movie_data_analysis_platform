@@ -2,7 +2,9 @@ from datetime import datetime
 from typing import Dict
 from fastapi import APIRouter
 from pydantic import BaseModel
+from src.utils.logger import get_logger
 
+logger = get_logger("health_api", "api")
 router = APIRouter()
 
 
@@ -21,9 +23,12 @@ class HealthCheckResponse(BaseModel):
     tags=["Health"],
 )
 async def health_check() -> HealthCheckResponse:
-    return HealthCheckResponse(
+    logger.info("Health check endpoint called")
+    response = HealthCheckResponse(
         status="healthy",
         timestamp=datetime.utcnow().isoformat(),
         service="Movie Data Analysis Platform",
         version="1.0.0",
     )
+    logger.debug(f"Health check response: {response.dict()}")
+    return response
