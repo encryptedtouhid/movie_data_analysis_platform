@@ -156,17 +156,30 @@ async def process_all_data() -> DataProcessResponse:
     "/load_data",
     response_model=LoadDataResponse,
     summary="Load Data",
-    description="Load and validate data from a file",
+    description="Load data from raw folder, convert to CSV, and save to processed folder",
     tags=["Data Processing"],
 )
 async def load_data(request: LoadDataRequest) -> LoadDataResponse:
     try:
-        logger.info(f"Load data endpoint called for: {request.file_path}")
-        df = data_processor.load_data(request.file_path)
+        logger.info(f"Load data endpoint called for dataset: {request.dataset}")
+
+        source_file: Path = Path(settings.data_raw_path) / f"{request.dataset}.dat"
+        if not source_file.exists():
+            logger.error(f"Source file not found: {source_file}")
+            raise HTTPException(status_code=404, detail=f"Dataset '{request.dataset}' not found in raw folder")
+
+        df = data_processor.load_data(str(source_file))
         logger.info(f"Data loaded: {len(df)} rows, {len(df.columns)} columns")
+
+        output_file: Path = Path(settings.data_processed_path) / f"{request.dataset}.csv"
+        df.to_csv(output_file, index=False)
+        logger.info(f"Data saved to: {output_file}")
+
         return LoadDataResponse(
             status="success",
-            message=f"Data loaded successfully from {request.file_path}",
+            message=f"Data loaded from raw folder and saved to processed folder",
+            source_file=str(source_file),
+            output_file=str(output_file),
             rows=len(df),
             columns=list(df.columns),
             sample=df.head(5).to_dict(orient='records')
@@ -186,22 +199,34 @@ async def load_data(request: LoadDataRequest) -> LoadDataResponse:
     "/clean_data",
     response_model=CleanDataResponse,
     summary="Clean Data",
-    description="Clean data by handling missing values, duplicates, and data quality issues",
+    description="Clean CSV data from processed folder and save cleaned version",
     tags=["Data Processing"],
 )
 async def clean_data(request: CleanDataRequest) -> CleanDataResponse:
     try:
-        logger.info(f"Clean data endpoint called for: {request.file_path}")
-        df = data_processor.load_data(request.file_path)
+        logger.info(f"Clean data endpoint called for dataset: {request.dataset}")
+
+        source_file: Path = Path(settings.data_processed_path) / f"{request.dataset}.csv"
+        if not source_file.exists():
+            logger.error(f"Source file not found: {source_file}")
+            raise HTTPException(status_code=404, detail=f"CSV file for dataset '{request.dataset}' not found. Please run load_data first.")
+
+        df = data_processor.load_data(str(source_file))
         initial_rows = len(df)
 
         cleaned_df = data_processor.clean_data(df)
         final_rows = len(cleaned_df)
 
+        output_file: Path = Path(settings.data_processed_path) / f"{request.dataset}_cleaned.csv"
+        cleaned_df.to_csv(output_file, index=False)
+        logger.info(f"Cleaned data saved to: {output_file}")
+
         logger.info(f"Data cleaned: {initial_rows} -> {final_rows} rows")
         return CleanDataResponse(
             status="success",
-            message="Data cleaned successfully",
+            message="Data cleaned and saved successfully",
+            source_file=str(source_file),
+            output_file=str(output_file),
             initial_rows=initial_rows,
             final_rows=final_rows,
             rows_removed=initial_rows - final_rows,
@@ -226,13 +251,19 @@ async def clean_data(request: CleanDataRequest) -> CleanDataResponse:
     "/aggregate_statistics",
     response_model=AggregateStatsResponse,
     summary="Aggregate Statistics",
-    description="Calculate comprehensive dataset statistics",
+    description="Calculate comprehensive statistics from cleaned dataset",
     tags=["Data Processing"],
 )
 async def aggregate_statistics(request: AggregateStatsRequest) -> AggregateStatsResponse:
     try:
-        logger.info(f"Aggregate statistics endpoint called for: {request.file_path}")
-        df = data_processor.load_data(request.file_path)
+        logger.info(f"Aggregate statistics endpoint called for dataset: {request.dataset}")
+
+        cleaned_file: Path = Path(settings.data_processed_path) / f"{request.dataset}_cleaned.csv"
+        if not cleaned_file.exists():
+            logger.error(f"Cleaned file not found: {cleaned_file}")
+            raise HTTPException(status_code=404, detail=f"Cleaned file for dataset '{request.dataset}' not found. Please run clean_data first.")
+
+        df = data_processor.load_data(str(cleaned_file))
         stats = data_processor.aggregate_statistics(df)
         logger.info(f"Statistics aggregated for {len(df)} rows")
         return AggregateStatsResponse(
@@ -258,13 +289,19 @@ async def aggregate_statistics(request: AggregateStatsRequest) -> AggregateStats
     "/filter_data",
     response_model=FilterDataResponse,
     summary="Filter Data",
-    description="Apply various filters to the dataset",
+    description="Apply various filters to the cleaned dataset",
     tags=["Data Processing"],
 )
 async def filter_data(request: FilterDataRequest) -> FilterDataResponse:
     try:
-        logger.info(f"Filter data endpoint called for: {request.file_path}")
-        df = data_processor.load_data(request.file_path)
+        logger.info(f"Filter data endpoint called for dataset: {request.dataset}")
+
+        cleaned_file: Path = Path(settings.data_processed_path) / f"{request.dataset}_cleaned.csv"
+        if not cleaned_file.exists():
+            logger.error(f"Cleaned file not found: {cleaned_file}")
+            raise HTTPException(status_code=404, detail=f"Cleaned file for dataset '{request.dataset}' not found. Please run clean_data first.")
+
+        df = data_processor.load_data(str(cleaned_file))
 
         filters = {}
         if request.min_rating is not None:

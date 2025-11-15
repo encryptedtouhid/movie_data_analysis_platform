@@ -12,24 +12,28 @@ class DataProcessResponse(BaseModel):
 
 
 class LoadDataRequest(BaseModel):
-    file_path: str
+    dataset: str
 
 
 class LoadDataResponse(BaseModel):
     status: str
     message: str
+    source_file: str
+    output_file: str
     rows: int
     columns: List[str]
     sample: List[Dict[str, Any]]
 
 
 class CleanDataRequest(BaseModel):
-    file_path: str
+    dataset: str
 
 
 class CleanDataResponse(BaseModel):
     status: str
     message: str
+    source_file: str
+    output_file: str
     initial_rows: int
     final_rows: int
     rows_removed: int
@@ -38,7 +42,7 @@ class CleanDataResponse(BaseModel):
 
 
 class AggregateStatsRequest(BaseModel):
-    file_path: str
+    dataset: str
 
 
 class AggregateStatsResponse(BaseModel):
@@ -48,7 +52,7 @@ class AggregateStatsResponse(BaseModel):
 
 
 class FilterDataRequest(BaseModel):
-    file_path: str
+    dataset: str
     min_rating: Optional[float] = None
     max_rating: Optional[float] = None
     user_id: Optional[int] = None

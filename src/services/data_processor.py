@@ -1,15 +1,11 @@
-import os
 import pandas as pd
 import numpy as np
 from typing import Dict, Any, Optional, List, Union
 from pathlib import Path
-import zipfile
-import urllib.request
-import shutil
 from abc import ABC, abstractmethod
 from src.core.config import settings
 from src.exceptions import (
-    DataDownloadError,
+    DataProcessingError,
     DataLoadError,
     DataCleaningError,
     DataValidationError,
@@ -36,13 +32,11 @@ class DataProcessor(BaseProcessor):
         logger.info("Initializing DataProcessor")
         self.data_raw_path: Path = Path(settings.data_raw_path)
         self.data_processed_path: Path = Path(settings.data_processed_path)
-        self.data_temp_path: Path = Path(settings.data_temp_path)
         self.data_delimiter: str = settings.data_delimiter
         self.chunk_size: int = 100000
 
         self.data_raw_path.mkdir(parents=True, exist_ok=True)
         self.data_processed_path.mkdir(parents=True, exist_ok=True)
-        self.data_temp_path.mkdir(parents=True, exist_ok=True)
         logger.info(f"DataProcessor initialized with paths - raw: {self.data_raw_path}, processed: {self.data_processed_path}")
 
     def convert_raw_to_csv(self) -> Dict[str, str]:
@@ -86,12 +80,6 @@ class DataProcessor(BaseProcessor):
         except Exception as e:
             logger.error(f"Unexpected error during conversion: {str(e)}")
             raise DataProcessingError("Unexpected error during conversion", str(e))
-
-    def _find_extracted_folder(self) -> Optional[Path]:
-        for item in self.data_temp_path.iterdir():
-            if item.is_dir() and item.name != '.gitkeep':
-                return item
-        return None
 
     def _convert_file(
         self,
