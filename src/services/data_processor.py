@@ -160,8 +160,7 @@ class DataProcessor(BaseProcessor):
                     file_path,
                     sep=self.data_delimiter,
                     encoding='latin-1',
-                    engine='python',
-                    low_memory=False
+                    engine='python'
                 )
             else:
                 return pd.read_csv(file_path, encoding='latin-1', low_memory=False)
@@ -183,8 +182,7 @@ class DataProcessor(BaseProcessor):
                     path,
                     sep=self.data_delimiter,
                     encoding='latin-1',
-                    engine='python',
-                    low_memory=False
+                    engine='python'
                 )
             elif path.suffix == '.csv':
                 logger.debug("Reading .csv file")
