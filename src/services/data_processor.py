@@ -369,21 +369,9 @@ class DataProcessor(BaseProcessor):
 
             if 'genres' in df.columns:
                 logger.debug("Performing Genre Analysis")
-                all_genres: List[str] = []
-                genre_movie_map: Dict[str, List[int]] = {}
-
-                for idx, row in df.iterrows():
-                    genres = row.get('genres')
-                    if pd.notna(genres) and isinstance(genres, str):
-                        genre_list = genres.split('|')
-                        all_genres.extend(genre_list)
-
-                        if 'movieId' in df.columns:
-                            movie_id = row.get('movieId')
-                            for genre in genre_list:
-                                if genre not in genre_movie_map:
-                                    genre_movie_map[genre] = []
-                                genre_movie_map[genre].append(movie_id)
+                # Vectorized approach: split all genres at once
+                genres_series = df['genres'].dropna().astype(str)
+                all_genres: List[str] = genres_series.str.split('|').explode().tolist()
 
                 genre_counts: pd.Series = pd.Series(all_genres).value_counts()
 
@@ -541,3 +529,88 @@ class DataProcessor(BaseProcessor):
         df_copy = df_copy.drop(columns=['year'])
 
         return df_copy
+
+    def export_to_json(
+        self,
+        df: pd.DataFrame,
+        file_path: str,
+        orient: str = 'records',
+        indent: int = 2
+    ) -> str:
+        """
+        Export DataFrame to JSON file.
+
+        Args:
+            df: DataFrame to export
+            file_path: Path where JSON file will be saved
+            orient: JSON structure orientation (records, index, columns, values, split, table)
+            indent: Number of spaces for indentation (None for compact)
+
+        Returns:
+            str: Absolute path to the saved JSON file
+
+        Raises:
+            DataProcessingError: If export fails
+        """
+        try:
+            logger.info(f"Exporting data to JSON: {file_path}")
+            if df.empty:
+                logger.error("Cannot export empty DataFrame")
+                raise DataValidationError("Cannot export empty DataFrame")
+
+            output_path: Path = Path(file_path)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Convert to JSON with proper formatting
+            df.to_json(output_path, orient=orient, indent=indent, force_ascii=False)
+
+            file_size_mb: float = output_path.stat().st_size / (1024 * 1024)
+            logger.info(f"Data exported successfully to {output_path} ({file_size_mb:.2f} MB)")
+            return str(output_path.absolute())
+
+        except Exception as e:
+            logger.error(f"Failed to export to JSON: {str(e)}")
+            raise DataProcessingError("Failed to export to JSON", str(e))
+
+    def export_to_csv(
+        self,
+        df: pd.DataFrame,
+        file_path: str,
+        index: bool = False
+    ) -> str:
+        """
+        Export DataFrame to CSV file.
+
+        Args:
+            df: DataFrame to export
+            file_path: Path where CSV file will be saved
+            index: Whether to include index in the export
+
+        Returns:
+            str: Absolute path to the saved CSV file
+
+        Raises:
+            DataProcessingError: If export fails
+        """
+        try:
+            logger.info(f"Exporting data to CSV: {file_path}")
+            if df.empty:
+                logger.error("Cannot export empty DataFrame")
+                raise DataValidationError("Cannot export empty DataFrame")
+
+            output_path: Path = Path(file_path)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Export with chunking for large datasets
+            if len(df) > self.chunk_size:
+                df.to_csv(output_path, index=index, chunksize=self.chunk_size)
+            else:
+                df.to_csv(output_path, index=index)
+
+            file_size_mb: float = output_path.stat().st_size / (1024 * 1024)
+            logger.info(f"Data exported successfully to {output_path} ({file_size_mb:.2f} MB)")
+            return str(output_path.absolute())
+
+        except Exception as e:
+            logger.error(f"Failed to export to CSV: {str(e)}")
+            raise DataProcessingError("Failed to export to CSV", str(e))

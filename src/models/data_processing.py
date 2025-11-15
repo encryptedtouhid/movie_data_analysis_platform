@@ -72,3 +72,20 @@ class FilterDataResponse(BaseModel):
     filters_applied: Dict[str, Any]
     data: Any
     sample: Any
+
+
+class ExportDataRequest(BaseModel):
+    dataset: str
+    format: str  # 'csv' or 'json'
+    file_name: Optional[str] = None
+    orient: Optional[str] = 'records'  # For JSON: records, index, columns, values, split, table
+    include_index: Optional[bool] = False  # For CSV
+
+
+class ExportDataResponse(BaseModel):
+    status: str
+    message: str
+    file_path: str
+    file_size_mb: float
+    rows_exported: int
+    format: str

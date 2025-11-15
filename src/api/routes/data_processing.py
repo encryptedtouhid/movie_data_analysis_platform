@@ -22,6 +22,8 @@ from src.models import (
     AggregateStatsResponse,
     FilterDataRequest,
     FilterDataResponse,
+    ExportDataRequest,
+    ExportDataResponse,
 )
 
 logger = get_logger("data_processing_api", "api")
@@ -454,6 +456,98 @@ async def filter_data(request: FilterDataRequest) -> FilterDataResponse:
     except DataFilterError as e:
         logger.error(f"Filter error: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Filter error: {str(e)}")
+    except DataValidationError as e:
+        logger.error(f"Validation error: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Validation error: {str(e)}")
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+
+@router.post(
+    "/export_data",
+    response_model=ExportDataResponse,
+    summary="Export Data",
+    description="Export cleaned or filtered data to CSV or JSON format",
+    tags=["Data Processing"],
+)
+async def export_data(request: ExportDataRequest) -> ExportDataResponse:
+    """
+    Export dataset to CSV or JSON format.
+
+    Supports:
+    - CSV export with optional index inclusion
+    - JSON export with multiple orientations (records, index, columns, values, split, table)
+    - Automatic file naming with timestamps
+    - Export from cleaned datasets
+    """
+    try:
+        logger.info(f"Export request received for dataset '{request.dataset}' in '{request.format}' format")
+
+        # Validate format
+        if request.format.lower() not in ['csv', 'json']:
+            raise HTTPException(status_code=400, detail=f"Unsupported format: {request.format}. Use 'csv' or 'json'")
+
+        # Load the cleaned dataset
+        cleaned_file: Path = Path(settings.data_processed_path) / f"{request.dataset}_cleaned.csv"
+        if not cleaned_file.exists():
+            logger.error(f"Cleaned file not found: {cleaned_file}")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Cleaned file for dataset '{request.dataset}' not found. Please run clean_data first."
+            )
+
+        df = data_processor.load_data(str(cleaned_file))
+        rows_count = len(df)
+
+        # Generate output file name if not provided
+        if request.file_name:
+            output_file_name = request.file_name
+            if not output_file_name.endswith(f'.{request.format}'):
+                output_file_name += f'.{request.format}'
+        else:
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_file_name = f"{request.dataset}_export_{timestamp}.{request.format}"
+
+        output_path = Path(settings.data_processed_path) / output_file_name
+
+        # Export based on format
+        if request.format.lower() == 'csv':
+            logger.info(f"Exporting to CSV with index={request.include_index}")
+            file_path = data_processor.export_to_csv(
+                df,
+                str(output_path),
+                index=request.include_index
+            )
+        else:  # json
+            logger.info(f"Exporting to JSON with orient={request.orient}")
+            file_path = data_processor.export_to_json(
+                df,
+                str(output_path),
+                orient=request.orient,
+                indent=2
+            )
+
+        # Get file size
+        file_size_mb = Path(file_path).stat().st_size / (1024 * 1024)
+
+        logger.info(f"Export completed successfully: {file_path} ({file_size_mb:.2f} MB)")
+        return ExportDataResponse(
+            status="success",
+            message=f"Data exported successfully to {request.format.upper()} format",
+            file_path=file_path,
+            file_size_mb=file_size_mb,
+            rows_exported=rows_count,
+            format=request.format.lower()
+        )
+
+    except DataLoadError as e:
+        logger.error(f"Load error: {str(e)}")
+        raise HTTPException(status_code=404, detail=f"Load error: {str(e)}")
+    except DataProcessingError as e:
+        logger.error(f"Export error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Export error: {str(e)}")
     except DataValidationError as e:
         logger.error(f"Validation error: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Validation error: {str(e)}")

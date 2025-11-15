@@ -8,6 +8,8 @@ from .data_processing import (
     AggregateStatsResponse,
     FilterDataRequest,
     FilterDataResponse,
+    ExportDataRequest,
+    ExportDataResponse,
 )
 from .health import HealthCheckResponse
 
@@ -21,5 +23,7 @@ __all__ = [
     "AggregateStatsResponse",
     "FilterDataRequest",
     "FilterDataResponse",
+    "ExportDataRequest",
+    "ExportDataResponse",
     "HealthCheckResponse",
 ]
