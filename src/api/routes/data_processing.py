@@ -331,21 +331,21 @@ async def filter_data(request: FilterDataRequest) -> FilterDataResponse:
         df = data_processor.load_data(str(cleaned_file))
 
         filters = {}
-        if request.min_rating is not None:
+        if request.min_rating is not None and request.min_rating > 0:
             filters['min_rating'] = request.min_rating
-        if request.max_rating is not None:
+        if request.max_rating is not None and request.max_rating > 0:
             filters['max_rating'] = request.max_rating
-        if request.user_id is not None:
+        if request.user_id is not None and request.user_id > 0:
             filters['user_id'] = request.user_id
-        if request.movie_id is not None:
+        if request.movie_id is not None and request.movie_id > 0:
             filters['movie_id'] = request.movie_id
-        if request.genres is not None:
+        if request.genres is not None and request.genres.strip():
             filters['genres'] = request.genres
-        if request.min_year is not None:
+        if request.min_year is not None and request.min_year > 0:
             filters['min_year'] = request.min_year
-        if request.max_year is not None:
+        if request.max_year is not None and request.max_year > 0:
             filters['max_year'] = request.max_year
-        if request.limit is not None:
+        if request.limit is not None and request.limit > 0:
             filters['limit'] = request.limit
 
         filtered_df = data_processor.filter_data(df, **filters)
@@ -357,6 +357,7 @@ async def filter_data(request: FilterDataRequest) -> FilterDataResponse:
             original_rows=len(df),
             filtered_rows=len(filtered_df),
             filters_applied=filters,
+            data=filtered_df.to_dict(orient='records'),
             sample=filtered_df.head(10).to_dict(orient='records')
         )
     except DataLoadError as e:
