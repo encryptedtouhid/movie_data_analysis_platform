@@ -49,10 +49,6 @@ htmlcov/
 .dmypy.json
 dmypy.json
 
-# Environment variables
-.env
-.env.local
-
 # Logs
 *.log
 
