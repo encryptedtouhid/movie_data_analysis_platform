@@ -70,5 +70,5 @@ class FilterDataResponse(BaseModel):
     original_rows: int
     filtered_rows: int
     filters_applied: Dict[str, Any]
-    data: List[Dict[str, Any]]
-    sample: List[Dict[str, Any]]
+    data: Any
+    sample: Any

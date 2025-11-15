@@ -278,26 +278,63 @@ async def clean_data(request: CleanDataRequest) -> CleanDataResponse:
     "/aggregate_statistics",
     response_model=AggregateStatsResponse,
     summary="Aggregate Statistics",
-    description="Calculate comprehensive statistics from cleaned dataset",
+    description="Calculate comprehensive statistics from cleaned dataset. Use 'all' to get combined statistics for all datasets.",
     tags=["Data Processing"],
 )
 async def aggregate_statistics(request: AggregateStatsRequest) -> AggregateStatsResponse:
     try:
         logger.info(f"Aggregate statistics endpoint called for dataset: {request.dataset}")
 
-        cleaned_file: Path = Path(settings.data_processed_path) / f"{request.dataset}_cleaned.csv"
-        if not cleaned_file.exists():
-            logger.error(f"Cleaned file not found: {cleaned_file}")
-            raise HTTPException(status_code=404, detail=f"Cleaned file for dataset '{request.dataset}' not found. Please run clean_data first.")
+        if request.dataset.lower() == "all":
+            logger.info("Processing combined statistics for all datasets")
 
-        df = data_processor.load_data(str(cleaned_file))
-        stats = data_processor.aggregate_statistics(df)
-        logger.info(f"Statistics aggregated for {len(df)} rows")
-        return AggregateStatsResponse(
-            status="success",
-            message="Statistics aggregated successfully",
-            statistics=stats
-        )
+            datasets = ["movies", "ratings", "tags", "users"]
+            combined_stats: Dict[str, Any] = {
+                "dataset_type": "combined",
+                "datasets_included": [],
+                "total_datasets": 0,
+                "total_records_across_all_datasets": 0,
+                "individual_dataset_statistics": {}
+            }
+
+            for dataset_name in datasets:
+                cleaned_file: Path = Path(settings.data_processed_path) / f"{dataset_name}_cleaned.csv"
+                if cleaned_file.exists():
+                    logger.info(f"Loading {dataset_name} for combined statistics")
+                    df = data_processor.load_data(str(cleaned_file))
+                    dataset_stats = data_processor.aggregate_statistics(df)
+
+                    combined_stats["datasets_included"].append(dataset_name)
+                    combined_stats["total_datasets"] += 1
+                    combined_stats["total_records_across_all_datasets"] += len(df)
+                    combined_stats["individual_dataset_statistics"][dataset_name] = dataset_stats
+                    logger.info(f"Added {dataset_name} statistics: {len(df)} rows")
+                else:
+                    logger.warning(f"Cleaned file not found for {dataset_name}, skipping")
+
+            if combined_stats["total_datasets"] == 0:
+                raise HTTPException(status_code=404, detail="No cleaned datasets found. Please run clean_data for at least one dataset first.")
+
+            logger.info(f"Combined statistics completed for {combined_stats['total_datasets']} datasets with {combined_stats['total_records_across_all_datasets']} total records")
+            return AggregateStatsResponse(
+                status="success",
+                message=f"Combined statistics aggregated successfully for {combined_stats['total_datasets']} datasets",
+                statistics=combined_stats
+            )
+        else:
+            cleaned_file: Path = Path(settings.data_processed_path) / f"{request.dataset}_cleaned.csv"
+            if not cleaned_file.exists():
+                logger.error(f"Cleaned file not found: {cleaned_file}")
+                raise HTTPException(status_code=404, detail=f"Cleaned file for dataset '{request.dataset}' not found. Please run clean_data first.")
+
+            df = data_processor.load_data(str(cleaned_file))
+            stats = data_processor.aggregate_statistics(df)
+            logger.info(f"Statistics aggregated for {len(df)} rows")
+            return AggregateStatsResponse(
+                status="success",
+                message="Statistics aggregated successfully",
+                statistics=stats
+            )
     except DataLoadError as e:
         logger.error(f"Load error: {str(e)}")
         raise HTTPException(status_code=404, detail=f"Load error: {str(e)}")
@@ -316,19 +353,12 @@ async def aggregate_statistics(request: AggregateStatsRequest) -> AggregateStats
     "/filter_data",
     response_model=FilterDataResponse,
     summary="Filter Data",
-    description="Apply various filters to the cleaned dataset",
+    description="Apply various filters to the cleaned dataset. Use 'all' to filter across all datasets.",
     tags=["Data Processing"],
 )
 async def filter_data(request: FilterDataRequest) -> FilterDataResponse:
     try:
         logger.info(f"Filter data endpoint called for dataset: {request.dataset}")
-
-        cleaned_file: Path = Path(settings.data_processed_path) / f"{request.dataset}_cleaned.csv"
-        if not cleaned_file.exists():
-            logger.error(f"Cleaned file not found: {cleaned_file}")
-            raise HTTPException(status_code=404, detail=f"Cleaned file for dataset '{request.dataset}' not found. Please run clean_data first.")
-
-        df = data_processor.load_data(str(cleaned_file))
 
         filters = {}
         if request.min_rating is not None and request.min_rating > 0:
@@ -348,18 +378,76 @@ async def filter_data(request: FilterDataRequest) -> FilterDataResponse:
         if request.limit is not None and request.limit > 0:
             filters['limit'] = request.limit
 
-        filtered_df = data_processor.filter_data(df, **filters)
+        if request.dataset.lower() == "all":
+            logger.info("Processing combined filtering for all datasets")
 
-        logger.info(f"Data filtered: {len(df)} -> {len(filtered_df)} rows")
-        return FilterDataResponse(
-            status="success",
-            message="Data filtered successfully",
-            original_rows=len(df),
-            filtered_rows=len(filtered_df),
-            filters_applied=filters,
-            data=filtered_df.to_dict(orient='records'),
-            sample=filtered_df.head(10).to_dict(orient='records')
-        )
+            datasets = ["movies", "ratings", "tags", "users"]
+            combined_results: Dict[str, Any] = {
+                "dataset_type": "combined",
+                "datasets_included": [],
+                "total_datasets": 0,
+                "total_original_rows": 0,
+                "total_filtered_rows": 0,
+                "individual_dataset_results": {}
+            }
+
+            for dataset_name in datasets:
+                cleaned_file: Path = Path(settings.data_processed_path) / f"{dataset_name}_cleaned.csv"
+                if cleaned_file.exists():
+                    logger.info(f"Filtering {dataset_name} dataset")
+                    df = data_processor.load_data(str(cleaned_file))
+                    original_rows = len(df)
+
+                    filtered_df = data_processor.filter_data(df, **filters)
+                    filtered_rows = len(filtered_df)
+
+                    combined_results["datasets_included"].append(dataset_name)
+                    combined_results["total_datasets"] += 1
+                    combined_results["total_original_rows"] += original_rows
+                    combined_results["total_filtered_rows"] += filtered_rows
+
+                    combined_results["individual_dataset_results"][dataset_name] = {
+                        "original_rows": original_rows,
+                        "filtered_rows": filtered_rows,
+                        "data": filtered_df.to_dict(orient='records'),
+                        "sample": filtered_df.head(10).to_dict(orient='records')
+                    }
+                    logger.info(f"Filtered {dataset_name}: {original_rows} -> {filtered_rows} rows")
+                else:
+                    logger.warning(f"Cleaned file not found for {dataset_name}, skipping")
+
+            if combined_results["total_datasets"] == 0:
+                raise HTTPException(status_code=404, detail="No cleaned datasets found. Please run clean_data for at least one dataset first.")
+
+            logger.info(f"Combined filtering completed for {combined_results['total_datasets']} datasets")
+            return FilterDataResponse(
+                status="success",
+                message=f"Data filtered successfully across {combined_results['total_datasets']} datasets",
+                original_rows=combined_results["total_original_rows"],
+                filtered_rows=combined_results["total_filtered_rows"],
+                filters_applied=filters,
+                data=combined_results,
+                sample=combined_results
+            )
+        else:
+            cleaned_file: Path = Path(settings.data_processed_path) / f"{request.dataset}_cleaned.csv"
+            if not cleaned_file.exists():
+                logger.error(f"Cleaned file not found: {cleaned_file}")
+                raise HTTPException(status_code=404, detail=f"Cleaned file for dataset '{request.dataset}' not found. Please run clean_data first.")
+
+            df = data_processor.load_data(str(cleaned_file))
+            filtered_df = data_processor.filter_data(df, **filters)
+
+            logger.info(f"Data filtered: {len(df)} -> {len(filtered_df)} rows")
+            return FilterDataResponse(
+                status="success",
+                message="Data filtered successfully",
+                original_rows=len(df),
+                filtered_rows=len(filtered_df),
+                filters_applied=filters,
+                data=filtered_df.to_dict(orient='records'),
+                sample=filtered_df.head(10).to_dict(orient='records')
+            )
     except DataLoadError as e:
         logger.error(f"Load error: {str(e)}")
         raise HTTPException(status_code=404, detail=f"Load error: {str(e)}")

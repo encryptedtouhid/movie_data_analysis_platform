@@ -269,7 +269,7 @@ class DataProcessor(BaseProcessor):
 
     def aggregate_statistics(self, df: pd.DataFrame) -> Dict[str, Any]:
         try:
-            logger.info("Starting statistics aggregation")
+            logger.info("Starting comprehensive statistics aggregation")
             if df.empty:
                 logger.error("Cannot aggregate statistics on empty DataFrame")
                 raise DataValidationError("Cannot aggregate statistics on empty DataFrame")
@@ -281,48 +281,171 @@ class DataProcessor(BaseProcessor):
                 'missing_values': {col: int(count) for col, count in df.isnull().sum().items()},
                 'memory_usage_mb': float(df.memory_usage(deep=True).sum() / (1024 * 1024))
             }
-            logger.debug(f"Basic stats calculated. Total records: {stats['total_records']}, Memory: {stats['memory_usage_mb']:.2f}MB")
+
+            logger.debug("Calculating Total Counts")
+            total_counts: Dict[str, int] = {}
+            if 'userId' in df.columns:
+                total_counts['total_users'] = int(df['userId'].nunique())
+            if 'movieId' in df.columns:
+                total_counts['total_movies'] = int(df['movieId'].nunique())
+            if 'rating' in df.columns:
+                total_counts['total_ratings'] = int(len(df[df['rating'].notna()]))
+            if total_counts:
+                stats['total_counts'] = total_counts
+                logger.debug(f"Total counts: {total_counts}")
+
+            if 'userId' in df.columns and 'movieId' in df.columns and 'rating' in df.columns:
+                logger.debug("Calculating Sparsity")
+                num_users = df['userId'].nunique()
+                num_movies = df['movieId'].nunique()
+                num_ratings = len(df)
+                possible_ratings = num_users * num_movies
+                sparsity = 1 - (num_ratings / possible_ratings) if possible_ratings > 0 else 0
+                stats['sparsity'] = {
+                    'value': float(sparsity),
+                    'percentage': float(sparsity * 100),
+                    'description': f"{sparsity * 100:.2f}% of possible ratings are missing",
+                    'total_possible_ratings': int(possible_ratings),
+                    'actual_ratings': int(num_ratings),
+                    'missing_ratings': int(possible_ratings - num_ratings)
+                }
+                logger.debug(f"Sparsity: {sparsity * 100:.2f}%")
+
+            if 'rating' in df.columns:
+                logger.debug("Calculating Average Ratings")
+                average_ratings: Dict[str, Any] = {
+                    'overall_average_rating': float(df['rating'].mean()),
+                    'overall_median_rating': float(df['rating'].median())
+                }
+
+                if 'movieId' in df.columns:
+                    movie_avg = df.groupby('movieId')['rating'].agg(['mean', 'count']).reset_index()
+                    movie_avg.columns = ['movieId', 'average_rating', 'rating_count']
+                    top_rated = movie_avg.nlargest(10, 'average_rating')
+                    most_rated = movie_avg.nlargest(10, 'rating_count')
+
+                    average_ratings['average_rating_per_movie'] = {
+                        'mean': float(movie_avg['average_rating'].mean()),
+                        'median': float(movie_avg['average_rating'].median()),
+                        'std': float(movie_avg['average_rating'].std()),
+                        'min': float(movie_avg['average_rating'].min()),
+                        'max': float(movie_avg['average_rating'].max())
+                    }
+                    average_ratings['top_10_highest_rated_movies'] = top_rated.to_dict(orient='records')
+                    average_ratings['top_10_most_rated_movies'] = most_rated.to_dict(orient='records')
+
+                if 'userId' in df.columns:
+                    user_avg = df.groupby('userId')['rating'].agg(['mean', 'count']).reset_index()
+                    user_avg.columns = ['userId', 'average_rating', 'rating_count']
+
+                    average_ratings['average_rating_per_user'] = {
+                        'mean': float(user_avg['average_rating'].mean()),
+                        'median': float(user_avg['average_rating'].median()),
+                        'std': float(user_avg['average_rating'].std()),
+                        'min': float(user_avg['average_rating'].min()),
+                        'max': float(user_avg['average_rating'].max())
+                    }
+                    average_ratings['top_10_most_active_users'] = user_avg.nlargest(10, 'rating_count').to_dict(orient='records')
+
+                stats['average_ratings'] = average_ratings
+                logger.debug(f"Average ratings calculated. Overall: {average_ratings['overall_average_rating']:.2f}")
+
+            if 'rating' in df.columns:
+                logger.debug("Calculating Rating Distribution")
+                rating_dist: pd.Series = df['rating'].value_counts().sort_index()
+                total_ratings_count = len(df['rating'].dropna())
+
+                rating_distribution: Dict[str, Any] = {
+                    'distribution': {str(k): int(v) for k, v in rating_dist.items()},
+                    'distribution_percentage': {
+                        str(k): float((v / total_ratings_count) * 100)
+                        for k, v in rating_dist.items()
+                    },
+                    'most_common_rating': float(rating_dist.idxmax()),
+                    'least_common_rating': float(rating_dist.idxmin())
+                }
+                stats['rating_distribution'] = rating_distribution
+                logger.debug(f"Rating distribution: Most common rating = {rating_distribution['most_common_rating']}")
+
+            if 'genres' in df.columns:
+                logger.debug("Performing Genre Analysis")
+                all_genres: List[str] = []
+                genre_movie_map: Dict[str, List[int]] = {}
+
+                for idx, row in df.iterrows():
+                    genres = row.get('genres')
+                    if pd.notna(genres) and isinstance(genres, str):
+                        genre_list = genres.split('|')
+                        all_genres.extend(genre_list)
+
+                        if 'movieId' in df.columns:
+                            movie_id = row.get('movieId')
+                            for genre in genre_list:
+                                if genre not in genre_movie_map:
+                                    genre_movie_map[genre] = []
+                                genre_movie_map[genre].append(movie_id)
+
+                genre_counts: pd.Series = pd.Series(all_genres).value_counts()
+
+                genre_analysis: Dict[str, Any] = {
+                    'total_genres': len(genre_counts),
+                    'total_genre_tags': len(all_genres),
+                    'movies_per_genre': {k: int(v) for k, v in genre_counts.items()},
+                    'top_10_genres': {k: int(v) for k, v in genre_counts.head(10).items()}
+                }
+                stats['genre_analysis'] = genre_analysis
+                logger.debug(f"Genre analysis: {len(genre_counts)} unique genres found")
+
+            if 'timestamp' in df.columns:
+                logger.debug("Analyzing Temporal Trends")
+                df_temp = df.copy()
+                df_temp['datetime'] = pd.to_datetime(df_temp['timestamp'], unit='s', errors='coerce')
+                df_temp['year'] = df_temp['datetime'].dt.year
+                df_temp['month'] = df_temp['datetime'].dt.month
+                df_temp['year_month'] = df_temp['datetime'].dt.to_period('M').astype(str)
+
+                temporal_trends: Dict[str, Any] = {
+                    'date_range': {
+                        'earliest': str(df_temp['datetime'].min()),
+                        'latest': str(df_temp['datetime'].max()),
+                        'span_days': int((df_temp['datetime'].max() - df_temp['datetime'].min()).days)
+                    }
+                }
+
+                if 'rating' in df.columns:
+                    ratings_by_year = df_temp.groupby('year')['rating'].agg(['mean', 'count']).reset_index()
+                    ratings_by_year.columns = ['year', 'average_rating', 'rating_count']
+                    ratings_by_year = ratings_by_year.dropna()
+
+                    temporal_trends['ratings_by_year'] = ratings_by_year.to_dict(orient='records')
+
+                    ratings_by_month = df_temp.groupby('year_month')['rating'].agg(['mean', 'count']).reset_index()
+                    ratings_by_month.columns = ['year_month', 'average_rating', 'rating_count']
+                    ratings_by_month = ratings_by_month.dropna().tail(12)
+
+                    temporal_trends['ratings_by_month_last_12'] = ratings_by_month.to_dict(orient='records')
+
+                activity_by_year = df_temp.groupby('year').size().reset_index(name='activity_count')
+                activity_by_year = activity_by_year.dropna()
+                temporal_trends['activity_by_year'] = activity_by_year.to_dict(orient='records')
+
+                stats['temporal_trends'] = temporal_trends
+                logger.debug(f"Temporal trends: Data spans {temporal_trends['date_range']['span_days']} days")
 
             numeric_cols: pd.Index = df.select_dtypes(include=[np.number]).columns
             logger.debug(f"Calculating statistics for {len(numeric_cols)} numeric columns")
             for col in numeric_cols:
-                stats[f'{col}_statistics'] = {
-                    'mean': float(df[col].mean()),
-                    'median': float(df[col].median()),
-                    'std': float(df[col].std()),
-                    'min': float(df[col].min()),
-                    'max': float(df[col].max()),
-                    'count': int(df[col].count())
-                }
+                if col not in ['timestamp']:
+                    stats[f'{col}_statistics'] = {
+                        'mean': float(df[col].mean()),
+                        'median': float(df[col].median()),
+                        'std': float(df[col].std()),
+                        'min': float(df[col].min()),
+                        'max': float(df[col].max()),
+                        'count': int(df[col].count())
+                    }
 
-            if 'rating' in df.columns:
-                logger.debug("Calculating rating distribution")
-                rating_dist: pd.Series = df['rating'].value_counts().sort_index()
-                stats['rating_distribution'] = {
-                    str(k): int(v) for k, v in rating_dist.items()
-                }
-
-            if 'genres' in df.columns:
-                logger.debug("Analyzing genres")
-                all_genres: List[str] = []
-                for genres in df['genres'].dropna():
-                    if isinstance(genres, str):
-                        all_genres.extend(genres.split('|'))
-                genre_counts: pd.Series = pd.Series(all_genres).value_counts().head(10)
-                stats['top_genres'] = {k: int(v) for k, v in genre_counts.items()}
-                logger.debug(f"Found {len(all_genres)} total genre entries")
-
-            if 'userId' in df.columns:
-                unique_users = int(df['userId'].nunique())
-                stats['unique_users'] = unique_users
-                logger.debug(f"Unique users: {unique_users}")
-
-            if 'movieId' in df.columns:
-                unique_movies = int(df['movieId'].nunique())
-                stats['unique_movies'] = unique_movies
-                logger.debug(f"Unique movies: {unique_movies}")
-
-            logger.info("Statistics aggregation completed successfully")
+            logger.info("Comprehensive statistics aggregation completed successfully")
             return stats
 
         except Exception as e:
