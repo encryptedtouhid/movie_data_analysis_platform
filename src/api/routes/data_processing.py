@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
-from pydantic import BaseModel
 from src.services.data_processor import DataProcessor
 from pathlib import Path
 from src.core.config import settings
@@ -11,21 +10,25 @@ from src.exceptions import (
     DataCleaningError,
     DataValidationError,
     DataAggregationError,
+    DataFilterError,
 )
 from src.utils.logger import get_logger
+from src.models import (
+    DataProcessResponse,
+    DownloadDatasetResponse,
+    LoadDataRequest,
+    LoadDataResponse,
+    CleanDataRequest,
+    CleanDataResponse,
+    AggregateStatsRequest,
+    AggregateStatsResponse,
+    FilterDataRequest,
+    FilterDataResponse,
+)
 
 logger = get_logger("data_processing_api", "api")
 router = APIRouter()
 data_processor = DataProcessor()
-
-
-class DataProcessResponse(BaseModel):
-    status: str
-    message: str
-    download_result: Dict[str, Any]
-    movies_result: Dict[str, Any]
-    ratings_result: Dict[str, Any]
-    tags_result: Dict[str, Any]
 
 
 @router.post(
@@ -149,6 +152,188 @@ async def process_all_data() -> DataProcessResponse:
     except DataProcessingError as e:
         logger.error(f"Processing error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Processing error: {str(e)}")
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+
+@router.post(
+    "/download_dataset",
+    response_model=DownloadDatasetResponse,
+    summary="Download and Convert Dataset",
+    description="Download MovieLens dataset from URL and convert to CSV format",
+    tags=["Data Processing"],
+)
+async def download_dataset() -> DownloadDatasetResponse:
+    try:
+        logger.info("Download dataset endpoint called")
+        converted_files: Dict[str, str] = data_processor.download_and_convert_dataset()
+        logger.info(f"Dataset downloaded and converted: {list(converted_files.keys())}")
+        return DownloadDatasetResponse(
+            status="success",
+            message="Dataset downloaded and converted successfully",
+            converted_files=converted_files
+        )
+    except DataDownloadError as e:
+        logger.error(f"Download error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Download error: {str(e)}")
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+
+@router.post(
+    "/load_data",
+    response_model=LoadDataResponse,
+    summary="Load Data",
+    description="Load and validate data from a file",
+    tags=["Data Processing"],
+)
+async def load_data(request: LoadDataRequest) -> LoadDataResponse:
+    try:
+        logger.info(f"Load data endpoint called for: {request.file_path}")
+        df = data_processor.load_data(request.file_path)
+        logger.info(f"Data loaded: {len(df)} rows, {len(df.columns)} columns")
+        return LoadDataResponse(
+            status="success",
+            message=f"Data loaded successfully from {request.file_path}",
+            rows=len(df),
+            columns=list(df.columns),
+            sample=df.head(5).to_dict(orient='records')
+        )
+    except DataLoadError as e:
+        logger.error(f"Load error: {str(e)}")
+        raise HTTPException(status_code=404, detail=f"Load error: {str(e)}")
+    except DataValidationError as e:
+        logger.error(f"Validation error: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Validation error: {str(e)}")
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+
+@router.post(
+    "/clean_data",
+    response_model=CleanDataResponse,
+    summary="Clean Data",
+    description="Clean data by handling missing values, duplicates, and data quality issues",
+    tags=["Data Processing"],
+)
+async def clean_data(request: CleanDataRequest) -> CleanDataResponse:
+    try:
+        logger.info(f"Clean data endpoint called for: {request.file_path}")
+        df = data_processor.load_data(request.file_path)
+        initial_rows = len(df)
+
+        cleaned_df = data_processor.clean_data(df)
+        final_rows = len(cleaned_df)
+
+        logger.info(f"Data cleaned: {initial_rows} -> {final_rows} rows")
+        return CleanDataResponse(
+            status="success",
+            message="Data cleaned successfully",
+            initial_rows=initial_rows,
+            final_rows=final_rows,
+            rows_removed=initial_rows - final_rows,
+            columns=list(cleaned_df.columns),
+            sample=cleaned_df.head(5).to_dict(orient='records')
+        )
+    except DataLoadError as e:
+        logger.error(f"Load error: {str(e)}")
+        raise HTTPException(status_code=404, detail=f"Load error: {str(e)}")
+    except DataCleaningError as e:
+        logger.error(f"Cleaning error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Cleaning error: {str(e)}")
+    except DataValidationError as e:
+        logger.error(f"Validation error: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Validation error: {str(e)}")
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+
+@router.post(
+    "/aggregate_statistics",
+    response_model=AggregateStatsResponse,
+    summary="Aggregate Statistics",
+    description="Calculate comprehensive dataset statistics",
+    tags=["Data Processing"],
+)
+async def aggregate_statistics(request: AggregateStatsRequest) -> AggregateStatsResponse:
+    try:
+        logger.info(f"Aggregate statistics endpoint called for: {request.file_path}")
+        df = data_processor.load_data(request.file_path)
+        stats = data_processor.aggregate_statistics(df)
+        logger.info(f"Statistics aggregated for {len(df)} rows")
+        return AggregateStatsResponse(
+            status="success",
+            message="Statistics aggregated successfully",
+            statistics=stats
+        )
+    except DataLoadError as e:
+        logger.error(f"Load error: {str(e)}")
+        raise HTTPException(status_code=404, detail=f"Load error: {str(e)}")
+    except DataAggregationError as e:
+        logger.error(f"Aggregation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Aggregation error: {str(e)}")
+    except DataValidationError as e:
+        logger.error(f"Validation error: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Validation error: {str(e)}")
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+
+@router.post(
+    "/filter_data",
+    response_model=FilterDataResponse,
+    summary="Filter Data",
+    description="Apply various filters to the dataset",
+    tags=["Data Processing"],
+)
+async def filter_data(request: FilterDataRequest) -> FilterDataResponse:
+    try:
+        logger.info(f"Filter data endpoint called for: {request.file_path}")
+        df = data_processor.load_data(request.file_path)
+
+        filters = {}
+        if request.min_rating is not None:
+            filters['min_rating'] = request.min_rating
+        if request.max_rating is not None:
+            filters['max_rating'] = request.max_rating
+        if request.user_id is not None:
+            filters['user_id'] = request.user_id
+        if request.movie_id is not None:
+            filters['movie_id'] = request.movie_id
+        if request.genres is not None:
+            filters['genres'] = request.genres
+        if request.min_year is not None:
+            filters['min_year'] = request.min_year
+        if request.max_year is not None:
+            filters['max_year'] = request.max_year
+        if request.limit is not None:
+            filters['limit'] = request.limit
+
+        filtered_df = data_processor.filter_data(df, **filters)
+
+        logger.info(f"Data filtered: {len(df)} -> {len(filtered_df)} rows")
+        return FilterDataResponse(
+            status="success",
+            message="Data filtered successfully",
+            original_rows=len(df),
+            filtered_rows=len(filtered_df),
+            filters_applied=filters,
+            sample=filtered_df.head(10).to_dict(orient='records')
+        )
+    except DataLoadError as e:
+        logger.error(f"Load error: {str(e)}")
+        raise HTTPException(status_code=404, detail=f"Load error: {str(e)}")
+    except DataFilterError as e:
+        logger.error(f"Filter error: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Filter error: {str(e)}")
+    except DataValidationError as e:
+        logger.error(f"Validation error: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Validation error: {str(e)}")
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
