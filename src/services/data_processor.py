@@ -74,6 +74,16 @@ class DataProcessor(BaseProcessor):
                 'tags'
             )
 
+            logger.info("Converting users data")
+            self._convert_file(
+                self.data_raw_path,
+                ["users.dat", "users.csv"],
+                "users.csv",
+                ['userId', 'gender', 'age', 'occupation', 'zipCode'],
+                converted_files,
+                'users'
+            )
+
             logger.info(f"Raw data conversion completed successfully. Converted files: {converted_files}")
             return converted_files
 
@@ -152,6 +162,8 @@ class DataProcessor(BaseProcessor):
                     columns = ['userId', 'movieId', 'rating', 'timestamp']
                 elif 'tags' in path.name.lower():
                     columns = ['userId', 'movieId', 'tag', 'timestamp']
+                elif 'users' in path.name.lower():
+                    columns = ['userId', 'gender', 'age', 'occupation', 'zipCode']
 
                 if columns:
                     df: pd.DataFrame = pd.read_csv(

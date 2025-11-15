@@ -9,6 +9,7 @@ class DataProcessResponse(BaseModel):
     movies_result: Dict[str, Any]
     ratings_result: Dict[str, Any]
     tags_result: Dict[str, Any]
+    users_result: Dict[str, Any]
 
 
 class LoadDataRequest(BaseModel):

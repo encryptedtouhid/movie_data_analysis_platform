@@ -47,6 +47,7 @@ async def process_all_data() -> DataProcessResponse:
         movies_path: str = converted_files.get('movies')
         ratings_path: str = converted_files.get('ratings')
         tags_path: str = converted_files.get('tags')
+        users_path: str = converted_files.get('users')
 
         movies_result: Dict[str, Any] = {}
         if movies_path:
@@ -123,6 +124,31 @@ async def process_all_data() -> DataProcessResponse:
                 "statistics": tags_stats
             }
 
+        users_result: Dict[str, Any] = {}
+        if users_path:
+            logger.info("Step 5: Processing users data")
+            users_df = data_processor.load_data(users_path)
+            initial_users_rows: int = len(users_df)
+            logger.info(f"Loaded {initial_users_rows} users")
+
+            cleaned_users_df = data_processor.clean_data(users_df)
+            final_users_rows: int = len(cleaned_users_df)
+            logger.info(f"Cleaned users data: {final_users_rows} rows remaining")
+
+            users_stats: Dict[str, Any] = data_processor.aggregate_statistics(cleaned_users_df)
+
+            cleaned_users_path: Path = Path(settings.data_processed_path) / "users_cleaned.csv"
+            cleaned_users_df.to_csv(cleaned_users_path, index=False)
+            logger.info(f"Saved cleaned users to {cleaned_users_path}")
+
+            users_result = {
+                "file_path": str(cleaned_users_path),
+                "initial_rows": initial_users_rows,
+                "final_rows": final_users_rows,
+                "rows_removed": initial_users_rows - final_users_rows,
+                "statistics": users_stats
+            }
+
         logger.info("=== Data Processing Pipeline Completed Successfully ===")
         return DataProcessResponse(
             status="success",
@@ -130,7 +156,8 @@ async def process_all_data() -> DataProcessResponse:
             converted_files=converted_files,
             movies_result=movies_result,
             ratings_result=ratings_result,
-            tags_result=tags_result
+            tags_result=tags_result,
+            users_result=users_result
         )
     except DataLoadError as e:
         logger.error(f"Load error: {str(e)}")
