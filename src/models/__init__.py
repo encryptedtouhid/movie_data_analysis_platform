@@ -1,6 +1,5 @@
 from .data_processing import (
     DataProcessResponse,
-    DownloadDatasetResponse,
     LoadDataRequest,
     LoadDataResponse,
     CleanDataRequest,
@@ -14,7 +13,6 @@ from .health import HealthCheckResponse
 
 __all__ = [
     "DataProcessResponse",
-    "DownloadDatasetResponse",
     "LoadDataRequest",
     "LoadDataResponse",
     "CleanDataRequest",

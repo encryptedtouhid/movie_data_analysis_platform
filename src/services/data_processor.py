@@ -45,34 +45,14 @@ class DataProcessor(BaseProcessor):
         self.data_temp_path.mkdir(parents=True, exist_ok=True)
         logger.info(f"DataProcessor initialized with paths - raw: {self.data_raw_path}, processed: {self.data_processed_path}")
 
-    def download_and_convert_dataset(self) -> Dict[str, str]:
+    def convert_raw_to_csv(self) -> Dict[str, str]:
         try:
-            logger.info("Starting dataset download and conversion")
-            if not settings.movie_lens_dataset_url:
-                logger.error("MOVIE_LENS_DATASET_URL is not configured")
-                raise DataDownloadError("MOVIE_LENS_DATASET_URL is not configured")
-
-            zip_path: Path = self.data_temp_path / "dataset.zip"
-            logger.info(f"Downloading dataset from {settings.movie_lens_dataset_url}")
-
-            urllib.request.urlretrieve(settings.movie_lens_dataset_url, zip_path)
-            logger.info(f"Dataset downloaded successfully to {zip_path}")
-
-            logger.info("Extracting dataset")
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                zip_ref.extractall(self.data_temp_path)
-
-            extracted_folder: Optional[Path] = self._find_extracted_folder()
-            if not extracted_folder:
-                logger.error("Could not find extracted dataset folder")
-                raise DataDownloadError("Could not find extracted dataset folder")
-
-            logger.info(f"Extracted dataset to {extracted_folder}")
+            logger.info("Starting raw data conversion to CSV")
             converted_files: Dict[str, str] = {}
 
             logger.info("Converting movies data")
             self._convert_file(
-                extracted_folder,
+                self.data_raw_path,
                 ["movies.dat", "movies.csv"],
                 "movies.csv",
                 ['movieId', 'title', 'genres'],
@@ -82,7 +62,7 @@ class DataProcessor(BaseProcessor):
 
             logger.info("Converting ratings data")
             self._convert_file(
-                extracted_folder,
+                self.data_raw_path,
                 ["ratings.dat", "ratings.csv"],
                 "ratings.csv",
                 ['userId', 'movieId', 'rating', 'timestamp'],
@@ -92,7 +72,7 @@ class DataProcessor(BaseProcessor):
 
             logger.info("Converting tags data")
             self._convert_file(
-                extracted_folder,
+                self.data_raw_path,
                 ["tags.dat", "tags.csv"],
                 "tags.csv",
                 ['userId', 'movieId', 'tag', 'timestamp'],
@@ -100,22 +80,12 @@ class DataProcessor(BaseProcessor):
                 'tags'
             )
 
-            logger.info("Cleaning up temporary files")
-            shutil.rmtree(extracted_folder)
-            zip_path.unlink()
-
-            logger.info(f"Dataset conversion completed successfully. Converted files: {converted_files}")
+            logger.info(f"Raw data conversion completed successfully. Converted files: {converted_files}")
             return converted_files
 
-        except urllib.error.URLError as e:
-            logger.error(f"Failed to download dataset: {str(e)}")
-            raise DataDownloadError("Failed to download dataset", str(e))
-        except zipfile.BadZipFile as e:
-            logger.error(f"Downloaded file is not a valid zip file: {str(e)}")
-            raise DataDownloadError("Downloaded file is not a valid zip file", str(e))
         except Exception as e:
-            logger.error(f"Unexpected error during download: {str(e)}")
-            raise DataDownloadError("Unexpected error during download", str(e))
+            logger.error(f"Unexpected error during conversion: {str(e)}")
+            raise DataProcessingError("Unexpected error during conversion", str(e))
 
     def _find_extracted_folder(self) -> Optional[Path]:
         for item in self.data_temp_path.iterdir():

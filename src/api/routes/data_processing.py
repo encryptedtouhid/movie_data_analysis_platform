@@ -5,7 +5,6 @@ from pathlib import Path
 from src.core.config import settings
 from src.exceptions import (
     DataProcessingError,
-    DataDownloadError,
     DataLoadError,
     DataCleaningError,
     DataValidationError,
@@ -15,7 +14,6 @@ from src.exceptions import (
 from src.utils.logger import get_logger
 from src.models import (
     DataProcessResponse,
-    DownloadDatasetResponse,
     LoadDataRequest,
     LoadDataResponse,
     CleanDataRequest,
@@ -35,15 +33,15 @@ data_processor = DataProcessor()
     "/process_all_data",
     response_model=DataProcessResponse,
     summary="Process All Data",
-    description="Download, load, clean, and analyze all datasets sequentially",
+    description="Convert raw data to CSV, load, clean, and analyze all datasets sequentially",
     tags=["Data Processing"],
 )
 async def process_all_data() -> DataProcessResponse:
     try:
         logger.info("=== Data Processing Pipeline Initiated ===")
 
-        logger.info("Step 1: Downloading and converting dataset")
-        converted_files: Dict[str, str] = data_processor.download_and_convert_dataset()
+        logger.info("Step 1: Converting raw data to CSV")
+        converted_files: Dict[str, str] = data_processor.convert_raw_to_csv()
         logger.info(f"Dataset conversion completed: {list(converted_files.keys())}")
 
         movies_path: str = converted_files.get('movies')
@@ -129,14 +127,11 @@ async def process_all_data() -> DataProcessResponse:
         return DataProcessResponse(
             status="success",
             message="Data processing completed successfully",
-            download_result=converted_files,
+            converted_files=converted_files,
             movies_result=movies_result,
             ratings_result=ratings_result,
             tags_result=tags_result
         )
-    except DataDownloadError as e:
-        logger.error(f"Download error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Download error: {str(e)}")
     except DataLoadError as e:
         logger.error(f"Load error: {str(e)}")
         raise HTTPException(status_code=404, detail=f"Load error: {str(e)}")
@@ -152,31 +147,6 @@ async def process_all_data() -> DataProcessResponse:
     except DataProcessingError as e:
         logger.error(f"Processing error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Processing error: {str(e)}")
-    except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
-
-
-@router.post(
-    "/download_dataset",
-    response_model=DownloadDatasetResponse,
-    summary="Download and Convert Dataset",
-    description="Download MovieLens dataset from URL and convert to CSV format",
-    tags=["Data Processing"],
-)
-async def download_dataset() -> DownloadDatasetResponse:
-    try:
-        logger.info("Download dataset endpoint called")
-        converted_files: Dict[str, str] = data_processor.download_and_convert_dataset()
-        logger.info(f"Dataset downloaded and converted: {list(converted_files.keys())}")
-        return DownloadDatasetResponse(
-            status="success",
-            message="Dataset downloaded and converted successfully",
-            converted_files=converted_files
-        )
-    except DataDownloadError as e:
-        logger.error(f"Download error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Download error: {str(e)}")
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")

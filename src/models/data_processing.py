@@ -5,16 +5,10 @@ from pydantic import BaseModel
 class DataProcessResponse(BaseModel):
     status: str
     message: str
-    download_result: Dict[str, Any]
+    converted_files: Dict[str, str]
     movies_result: Dict[str, Any]
     ratings_result: Dict[str, Any]
     tags_result: Dict[str, Any]
-
-
-class DownloadDatasetResponse(BaseModel):
-    status: str
-    message: str
-    converted_files: Dict[str, str]
 
 
 class LoadDataRequest(BaseModel):
