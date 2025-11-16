@@ -312,6 +312,13 @@ async def home():
                     <span class="endpoint-path">/api/v1/analysis/genre_trends</span>
                 </div>
 
+                <div class="endpoint-card" onclick="callEndpoint('/api/v1/analysis/user_statistics', 'POST', {{user_id: 1}})">
+                    <h3>User Statistics</h3>
+                    <p>Comprehensive statistics for a specific user</p>
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/v1/analysis/user_statistics</span>
+                </div>
+
                 <div class="endpoint-card" onclick="callEndpoint('/api/v1/analysis/time_series', 'GET')">
                     <h3>Time Series</h3>
                     <p>Analyze rating patterns over time</p>
@@ -324,6 +331,34 @@ async def home():
                     <p>Analyze correlations between movie metrics</p>
                     <span class="method get">GET</span>
                     <span class="endpoint-path">/api/v1/analysis/correlation_analysis</span>
+                </div>
+
+                <div class="endpoint-card" onclick="callEndpoint('/api/v1/analysis/clustering', 'POST', {{n_clusters: 5}})">
+                    <h3>User Clustering (Advanced)</h3>
+                    <p>ML-based user segmentation by rating patterns</p>
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/v1/analysis/clustering</span>
+                </div>
+
+                <div class="endpoint-card" onclick="callEndpoint('/api/v1/analysis/trend_analysis', 'POST', {{period: 'month'}})">
+                    <h3>Trend Analysis (Advanced)</h3>
+                    <p>Advanced time-series analysis of rating trends</p>
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/v1/analysis/trend_analysis</span>
+                </div>
+
+                <div class="endpoint-card" onclick="callEndpoint('/api/v1/analysis/anomaly_detection', 'POST', {{method: 'iqr', sensitivity: 1.5}})">
+                    <h3>Anomaly Detection (Advanced)</h3>
+                    <p>Identify unusual rating patterns and outliers</p>
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/v1/analysis/anomaly_detection</span>
+                </div>
+
+                <div class="endpoint-card" onclick="callEndpoint('/api/v1/analysis/rating_sentiment', 'POST', {{analysis_type: 'overall'}})">
+                    <h3>Rating Sentiment Analysis (Advanced)</h3>
+                    <p>Analyze sentiment patterns from rating data</p>
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/v1/analysis/rating_sentiment</span>
                 </div>
             </div>
         </div>

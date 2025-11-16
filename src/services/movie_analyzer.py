@@ -474,3 +474,572 @@ class MovieAnalyzer:
         direction = "positive" if corr > 0 else "negative"
 
         return f"There is a {strength} {direction} correlation ({corr:.3f}) between {var1} and {var2}."
+
+    def perform_user_clustering(self, n_clusters: int = 5) -> Dict[str, Any]:
+        """
+        Perform user segmentation based on rating patterns using K-Means clustering.
+        
+        Args:
+            n_clusters: Number of user segments to create (default: 5)
+            
+        Returns:
+            Dictionary containing cluster information and user segments
+            
+        Raises:
+            DataAnalysisError: If clustering fails
+        """
+        try:
+            from sklearn.cluster import KMeans
+            from sklearn.preprocessing import StandardScaler
+
+            logger.info(f"Performing user clustering with {n_clusters} clusters")
+
+            if self.ratings_df is None:
+                self.load_datasets()
+
+            if self.ratings_df is None or self.ratings_df.empty:
+                raise DataValidationError("No ratings data available for clustering")
+
+            # Create user rating profiles
+            user_profiles = self.ratings_df.groupby('userId').agg({
+                'rating': ['mean', 'std', 'count'],
+                'movieId': 'nunique'
+            }).reset_index()
+            
+            user_profiles.columns = ['userId', 'avg_rating', 'rating_std', 'rating_count', 'unique_movies']
+            user_profiles['rating_std'] = user_profiles['rating_std'].fillna(0)
+            
+            # Prepare features for clustering
+            features = user_profiles[['avg_rating', 'rating_std', 'rating_count', 'unique_movies']].values
+            
+            # Standardize features
+            scaler = StandardScaler()
+            features_scaled = scaler.fit_transform(features)
+            
+            # Perform K-Means clustering
+            kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+            user_profiles['cluster'] = kmeans.fit_predict(features_scaled)
+            
+            # Analyze each cluster
+            clusters_info = []
+            for cluster_id in range(n_clusters):
+                cluster_users = user_profiles[user_profiles['cluster'] == cluster_id]
+                
+                cluster_info = {
+                    'cluster_id': int(cluster_id),
+                    'user_count': int(len(cluster_users)),
+                    'avg_rating_mean': float(cluster_users['avg_rating'].mean()),
+                    'avg_rating_std': float(cluster_users['rating_std'].mean()),
+                    'avg_movies_rated': float(cluster_users['rating_count'].mean()),
+                    'avg_unique_movies': float(cluster_users['unique_movies'].mean()),
+                    'characteristics': self._describe_cluster(cluster_users)
+                }
+                clusters_info.append(cluster_info)
+            
+            # Calculate clustering quality metrics
+            from sklearn.metrics import silhouette_score, davies_bouldin_score
+            
+            silhouette = float(silhouette_score(features_scaled, kmeans.labels_))
+            davies_bouldin = float(davies_bouldin_score(features_scaled, kmeans.labels_))
+            
+            result = {
+                'n_clusters': n_clusters,
+                'total_users': int(len(user_profiles)),
+                'clusters': clusters_info,
+                'quality_metrics': {
+                    'silhouette_score': silhouette,
+                    'davies_bouldin_score': davies_bouldin
+                },
+                'cluster_centers': kmeans.cluster_centers_.tolist()
+            }
+            
+            logger.info(f"User clustering completed: {n_clusters} clusters identified")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error performing user clustering: {str(e)}")
+            raise DataAnalysisError(f"Failed to perform clustering: {str(e)}")
+    
+    def _describe_cluster(self, cluster_data: pd.DataFrame) -> str:
+        """Generate a textual description of a cluster's characteristics"""
+        avg_rating = cluster_data['avg_rating'].mean()
+        avg_count = cluster_data['rating_count'].mean()
+        avg_std = cluster_data['rating_std'].mean()
+        
+        if avg_rating > 3.5:
+            rating_desc = "generous raters"
+        elif avg_rating < 2.5:
+            rating_desc = "critical raters"
+        else:
+            rating_desc = "moderate raters"
+        
+        if avg_count > 500:
+            activity_desc = "highly active"
+        elif avg_count > 100:
+            activity_desc = "active"
+        else:
+            activity_desc = "casual"
+        
+        if avg_std > 1.0:
+            consistency_desc = "diverse opinions"
+        else:
+            consistency_desc = "consistent opinions"
+        
+        return f"{activity_desc} {rating_desc} with {consistency_desc}"
+    
+    def perform_trend_analysis(self, period: str = 'month') -> Dict[str, Any]:
+        """
+        Advanced time-series trend analysis of rating patterns.
+        
+        Args:
+            period: Aggregation period ('day', 'week', 'month', 'year')
+            
+        Returns:
+            Dictionary containing trend analysis results
+            
+        Raises:
+            DataAnalysisError: If trend analysis fails
+        """
+        try:
+            logger.info(f"Performing trend analysis with period: {period}")
+
+            if self.ratings_df is None:
+                self.load_datasets()
+
+            if self.ratings_df is None or self.ratings_df.empty:
+                raise DataValidationError("No ratings data available for trend analysis")
+
+            # Convert timestamp to datetime
+            ratings_with_time = self.ratings_df.copy()
+            ratings_with_time['datetime'] = pd.to_datetime(ratings_with_time['timestamp'], unit='s')
+            
+            # Aggregate by period
+            if period == 'day':
+                ratings_with_time['period'] = ratings_with_time['datetime'].dt.date
+            elif period == 'week':
+                ratings_with_time['period'] = ratings_with_time['datetime'].dt.to_period('W').astype(str)
+            elif period == 'month':
+                ratings_with_time['period'] = ratings_with_time['datetime'].dt.to_period('M').astype(str)
+            elif period == 'year':
+                ratings_with_time['period'] = ratings_with_time['datetime'].dt.year
+            else:
+                raise DataValidationError(f"Invalid period: {period}")
+            
+            # Calculate trend metrics
+            trend_data = ratings_with_time.groupby('period').agg({
+                'rating': ['mean', 'std', 'count'],
+                'userId': 'nunique',
+                'movieId': 'nunique'
+            }).reset_index()
+            
+            trend_data.columns = ['period', 'avg_rating', 'rating_std', 'total_ratings', 'unique_users', 'unique_movies']
+            
+            # Calculate rolling statistics
+            window_size = min(7, len(trend_data))
+            trend_data['rolling_avg'] = trend_data['avg_rating'].rolling(window=window_size, min_periods=1).mean()
+            trend_data['rolling_std'] = trend_data['avg_rating'].rolling(window=window_size, min_periods=1).std()
+            
+            # Detect trends
+            if len(trend_data) > 1:
+                first_half_avg = trend_data.iloc[:len(trend_data)//2]['avg_rating'].mean()
+                second_half_avg = trend_data.iloc[len(trend_data)//2:]['avg_rating'].mean()
+                
+                if second_half_avg > first_half_avg + 0.1:
+                    overall_trend = "increasing"
+                elif second_half_avg < first_half_avg - 0.1:
+                    overall_trend = "decreasing"
+                else:
+                    overall_trend = "stable"
+            else:
+                overall_trend = "insufficient_data"
+            
+            result = {
+                'period': period,
+                'overall_trend': overall_trend,
+                'trend_strength': float(abs(second_half_avg - first_half_avg)) if len(trend_data) > 1 else 0.0,
+                'data_points': int(len(trend_data)),
+                'time_series': trend_data.fillna(0).to_dict('records'),
+                'statistics': {
+                    'avg_rating_overall': float(trend_data['avg_rating'].mean()),
+                    'rating_volatility': float(trend_data['avg_rating'].std()),
+                    'avg_daily_ratings': float(trend_data['total_ratings'].mean()),
+                    'peak_period': str(trend_data.loc[trend_data['total_ratings'].idxmax(), 'period']),
+                    'lowest_period': str(trend_data.loc[trend_data['total_ratings'].idxmin(), 'period'])
+                }
+            }
+            
+            logger.info(f"Trend analysis completed: {overall_trend} trend detected")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error performing trend analysis: {str(e)}")
+            raise DataAnalysisError(f"Failed to perform trend analysis: {str(e)}")
+    
+    def detect_anomalies(self, method: str = 'iqr', sensitivity: float = 1.5) -> Dict[str, Any]:
+        """
+        Identify unusual rating patterns and anomalies.
+        
+        Args:
+            method: Detection method ('iqr', 'zscore', 'isolation_forest')
+            sensitivity: Sensitivity threshold (lower = more sensitive)
+            
+        Returns:
+            Dictionary containing detected anomalies
+            
+        Raises:
+            DataAnalysisError: If anomaly detection fails
+        """
+        try:
+            logger.info(f"Detecting anomalies using method: {method}")
+
+            if self.ratings_df is None:
+                self.load_datasets()
+
+            if self.ratings_df is None or self.ratings_df.empty:
+                raise DataValidationError("No ratings data available for anomaly detection")
+
+            anomalies_results = {
+                'method': method,
+                'sensitivity': sensitivity,
+                'anomalous_users': [],
+                'anomalous_movies': [],
+                'unusual_patterns': []
+            }
+            
+            # User-level anomalies
+            user_stats = self.ratings_df.groupby('userId').agg({
+                'rating': ['mean', 'std', 'count']
+            }).reset_index()
+            user_stats.columns = ['userId', 'avg_rating', 'rating_std', 'rating_count']
+            
+            if method == 'iqr':
+                # IQR method for outlier detection
+                Q1 = user_stats['rating_count'].quantile(0.25)
+                Q3 = user_stats['rating_count'].quantile(0.75)
+                IQR = Q3 - Q1
+                threshold_upper = Q3 + sensitivity * IQR
+                threshold_lower = Q1 - sensitivity * IQR
+                
+                anomalous_users = user_stats[
+                    (user_stats['rating_count'] > threshold_upper) |
+                    (user_stats['rating_count'] < threshold_lower)
+                ]
+                
+            elif method == 'zscore':
+                # Z-score method
+                mean_count = user_stats['rating_count'].mean()
+                std_count = user_stats['rating_count'].std()
+                user_stats['z_score'] = (user_stats['rating_count'] - mean_count) / std_count
+                
+                anomalous_users = user_stats[abs(user_stats['z_score']) > sensitivity]
+                
+            elif method == 'isolation_forest':
+                # Isolation Forest for multivariate anomaly detection
+                from sklearn.ensemble import IsolationForest
+                
+                features = user_stats[['avg_rating', 'rating_count']].fillna(0).values
+                iso_forest = IsolationForest(contamination=0.1, random_state=42)
+                predictions = iso_forest.fit_predict(features)
+                
+                user_stats['anomaly'] = predictions
+                anomalous_users = user_stats[user_stats['anomaly'] == -1]
+            else:
+                raise DataValidationError(f"Invalid method: {method}")
+            
+            # Movie-level anomalies
+            movie_stats = self.ratings_df.groupby('movieId').agg({
+                'rating': ['mean', 'std', 'count']
+            }).reset_index()
+            movie_stats.columns = ['movieId', 'avg_rating', 'rating_std', 'rating_count']
+            
+            # Find movies with unusual rating patterns
+            avg_movie_rating = movie_stats['avg_rating'].mean()
+            std_movie_rating = movie_stats['avg_rating'].std()
+            
+            unusual_movies = movie_stats[
+                (abs(movie_stats['avg_rating'] - avg_movie_rating) > 2 * std_movie_rating) &
+                (movie_stats['rating_count'] > 10)
+            ]
+            
+            # Compile results
+            anomalies_results['anomalous_users'] = [
+                {
+                    'userId': int(row['userId']),
+                    'avg_rating': float(row['avg_rating']),
+                    'rating_count': int(row['rating_count']),
+                    'reason': 'unusual_activity_level'
+                }
+                for _, row in anomalous_users.head(20).iterrows()
+            ]
+            
+            anomalies_results['anomalous_movies'] = [
+                {
+                    'movieId': int(row['movieId']),
+                    'avg_rating': float(row['avg_rating']),
+                    'rating_count': int(row['rating_count']),
+                    'deviation_from_mean': float(abs(row['avg_rating'] - avg_movie_rating)),
+                    'reason': 'polarizing' if row['avg_rating'] > avg_movie_rating else 'controversial'
+                }
+                for _, row in unusual_movies.head(20).iterrows()
+            ]
+            
+            # Unusual patterns
+            anomalies_results['unusual_patterns'] = [
+                {
+                    'pattern': 'high_volume_users',
+                    'count': int((user_stats['rating_count'] > user_stats['rating_count'].quantile(0.95)).sum()),
+                    'threshold': float(user_stats['rating_count'].quantile(0.95))
+                },
+                {
+                    'pattern': 'extreme_critics',
+                    'count': int((user_stats['avg_rating'] < 2.0).sum()),
+                    'avg_rating': float(user_stats[user_stats['avg_rating'] < 2.0]['avg_rating'].mean()) if len(user_stats[user_stats['avg_rating'] < 2.0]) > 0 else 0.0
+                },
+                {
+                    'pattern': 'generous_raters',
+                    'count': int((user_stats['avg_rating'] > 4.5).sum()),
+                    'avg_rating': float(user_stats[user_stats['avg_rating'] > 4.5]['avg_rating'].mean()) if len(user_stats[user_stats['avg_rating'] > 4.5]) > 0 else 0.0
+                }
+            ]
+            
+            anomalies_results['summary'] = {
+                'total_anomalous_users': len(anomalies_results['anomalous_users']),
+                'total_anomalous_movies': len(anomalies_results['anomalous_movies']),
+                'detection_rate': float(len(anomalous_users) / len(user_stats)) if len(user_stats) > 0 else 0.0
+            }
+            
+            logger.info(f"Anomaly detection completed: {len(anomalies_results['anomalous_users'])} anomalous users, {len(anomalies_results['anomalous_movies'])} anomalous movies")
+            return anomalies_results
+
+        except Exception as e:
+            logger.error(f"Error detecting anomalies: {str(e)}")
+            raise DataAnalysisError(f"Failed to detect anomalies: {str(e)}")
+
+    def analyze_rating_sentiment(
+        self,
+        analysis_type: str = 'overall',
+        movie_id: Optional[int] = None,
+        user_id: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Perform sentiment analysis based on rating patterns.
+
+        Converts numerical ratings to sentiment categories and analyzes patterns.
+
+        Args:
+            analysis_type: Type of analysis ('overall', 'movie_sentiment', 'user_sentiment', 'temporal_sentiment')
+            movie_id: Optional movie ID for movie-specific analysis
+            user_id: Optional user ID for user-specific analysis
+
+        Returns:
+            Dictionary containing sentiment analysis results
+
+        Raises:
+            DataAnalysisError: If sentiment analysis fails
+            DataValidationError: If invalid parameters provided
+        """
+        try:
+            logger.info(f"Performing rating sentiment analysis: {analysis_type}")
+
+            if self.ratings_df is None:
+                self.load_datasets()
+
+            if self.ratings_df is None or self.ratings_df.empty:
+                raise DataValidationError("No ratings data available for sentiment analysis")
+
+            # Define sentiment classification thresholds
+            def classify_sentiment(rating: float) -> str:
+                if rating >= 4.0:
+                    return 'positive'
+                elif rating >= 3.0:
+                    return 'neutral'
+                else:
+                    return 'negative'
+
+            # Add sentiment column
+            ratings_with_sentiment = self.ratings_df.copy()
+            ratings_with_sentiment['sentiment'] = ratings_with_sentiment['rating'].apply(classify_sentiment)
+
+            result = {
+                'analysis_type': analysis_type,
+                'sentiment_classification': {
+                    'positive': '4.0 - 5.0 stars',
+                    'neutral': '3.0 - 3.5 stars',
+                    'negative': '0.5 - 2.5 stars'
+                }
+            }
+
+            if analysis_type == 'movie_sentiment' and movie_id:
+                # Movie-specific sentiment analysis
+                movie_ratings = ratings_with_sentiment[ratings_with_sentiment['movieId'] == movie_id]
+
+                if movie_ratings.empty:
+                    raise DataValidationError(f"No ratings found for movie_id: {movie_id}")
+
+                sentiment_dist = movie_ratings['sentiment'].value_counts(normalize=True) * 100
+
+                # Calculate polarization score
+                positive_pct = sentiment_dist.get('positive', 0)
+                negative_pct = sentiment_dist.get('negative', 0)
+                polarization = min(positive_pct, negative_pct) * 2  # 0-100, higher = more polarized
+
+                # Consensus score
+                max_sentiment_pct = sentiment_dist.max()
+                consensus = max_sentiment_pct  # Higher = more agreement
+
+                result['movie_id'] = movie_id
+                result['sentiment_distribution'] = {
+                    'positive': float(sentiment_dist.get('positive', 0)),
+                    'neutral': float(sentiment_dist.get('neutral', 0)),
+                    'negative': float(sentiment_dist.get('negative', 0))
+                }
+                result['metrics'] = {
+                    'total_ratings': int(len(movie_ratings)),
+                    'avg_rating': float(movie_ratings['rating'].mean()),
+                    'polarization_score': float(polarization),
+                    'consensus_score': float(consensus),
+                    'dominant_sentiment': sentiment_dist.idxmax()
+                }
+                result['interpretation'] = self._interpret_movie_sentiment(polarization, consensus)
+
+            elif analysis_type == 'user_sentiment' and user_id:
+                # User-specific sentiment behavior analysis
+                user_ratings = ratings_with_sentiment[ratings_with_sentiment['userId'] == user_id]
+
+                if user_ratings.empty:
+                    raise DataValidationError(f"No ratings found for user_id: {user_id}")
+
+                sentiment_dist = user_ratings['sentiment'].value_counts(normalize=True) * 100
+
+                # Classify user type
+                positive_pct = sentiment_dist.get('positive', 0)
+                negative_pct = sentiment_dist.get('negative', 0)
+
+                if positive_pct > 60:
+                    user_type = 'optimistic_rater'
+                elif negative_pct > 40:
+                    user_type = 'critical_rater'
+                else:
+                    user_type = 'balanced_rater'
+
+                result['user_id'] = user_id
+                result['sentiment_distribution'] = {
+                    'positive': float(sentiment_dist.get('positive', 0)),
+                    'neutral': float(sentiment_dist.get('neutral', 0)),
+                    'negative': float(sentiment_dist.get('negative', 0))
+                }
+                result['user_profile'] = {
+                    'total_ratings': int(len(user_ratings)),
+                    'avg_rating': float(user_ratings['rating'].mean()),
+                    'rating_std': float(user_ratings['rating'].std()),
+                    'user_type': user_type,
+                    'dominant_sentiment': sentiment_dist.idxmax()
+                }
+                result['interpretation'] = self._interpret_user_sentiment(user_type, positive_pct, negative_pct)
+
+            elif analysis_type == 'temporal_sentiment':
+                # Temporal sentiment trend analysis
+                ratings_with_time = ratings_with_sentiment.copy()
+                ratings_with_time['datetime'] = pd.to_datetime(ratings_with_time['timestamp'], unit='s')
+                ratings_with_time['year'] = ratings_with_time['datetime'].dt.year
+                ratings_with_time['month'] = ratings_with_time['datetime'].dt.to_period('M').astype(str)
+
+                # Yearly sentiment trends
+                yearly_sentiment = ratings_with_time.groupby('year')['sentiment'].value_counts(normalize=True).unstack(fill_value=0) * 100
+
+                # Monthly sentiment trends (last 24 months)
+                monthly_sentiment = ratings_with_time.groupby('month')['sentiment'].value_counts(normalize=True).unstack(fill_value=0) * 100
+                monthly_sentiment = monthly_sentiment.tail(24)
+
+                result['yearly_trends'] = yearly_sentiment.to_dict('index')
+                result['monthly_trends'] = monthly_sentiment.to_dict('index')
+                result['overall_trend'] = {
+                    'positive_change': float(yearly_sentiment['positive'].iloc[-1] - yearly_sentiment['positive'].iloc[0]) if len(yearly_sentiment) > 1 else 0.0,
+                    'negative_change': float(yearly_sentiment['negative'].iloc[-1] - yearly_sentiment['negative'].iloc[0]) if len(yearly_sentiment) > 1 else 0.0
+                }
+
+            else:  # overall analysis
+                # Overall platform sentiment analysis
+                overall_sentiment_dist = ratings_with_sentiment['sentiment'].value_counts(normalize=True) * 100
+
+                # User behavior classification
+                user_sentiment = ratings_with_sentiment.groupby('userId').apply(
+                    lambda x: (x['sentiment'].value_counts(normalize=True) * 100).to_dict()
+                )
+
+                user_types = {
+                    'optimistic_raters': 0,
+                    'critical_raters': 0,
+                    'balanced_raters': 0
+                }
+
+                for sentiment_dist in user_sentiment:
+                    positive_pct = sentiment_dist.get('positive', 0)
+                    negative_pct = sentiment_dist.get('negative', 0)
+
+                    if positive_pct > 60:
+                        user_types['optimistic_raters'] += 1
+                    elif negative_pct > 40:
+                        user_types['critical_raters'] += 1
+                    else:
+                        user_types['balanced_raters'] += 1
+
+                # Movie sentiment profiles
+                movie_sentiment = self.ratings_df.groupby('movieId').agg({
+                    'rating': ['mean', 'std', 'count']
+                }).reset_index()
+                movie_sentiment.columns = ['movieId', 'avg_rating', 'rating_std', 'rating_count']
+                movie_sentiment['sentiment'] = movie_sentiment['avg_rating'].apply(classify_sentiment)
+
+                movie_sentiment_dist = movie_sentiment['sentiment'].value_counts(normalize=True) * 100
+
+                result['overall_sentiment'] = {
+                    'positive': float(overall_sentiment_dist.get('positive', 0)),
+                    'neutral': float(overall_sentiment_dist.get('neutral', 0)),
+                    'negative': float(overall_sentiment_dist.get('negative', 0))
+                }
+                result['user_behavior'] = {
+                    'optimistic_raters': int(user_types['optimistic_raters']),
+                    'critical_raters': int(user_types['critical_raters']),
+                    'balanced_raters': int(user_types['balanced_raters']),
+                    'total_users': int(sum(user_types.values()))
+                }
+                result['movie_sentiment'] = {
+                    'positive_movies': float(movie_sentiment_dist.get('positive', 0)),
+                    'neutral_movies': float(movie_sentiment_dist.get('neutral', 0)),
+                    'negative_movies': float(movie_sentiment_dist.get('negative', 0))
+                }
+                result['statistics'] = {
+                    'total_ratings': int(len(ratings_with_sentiment)),
+                    'avg_rating_platform': float(ratings_with_sentiment['rating'].mean()),
+                    'sentiment_variance': float(ratings_with_sentiment['rating'].std())
+                }
+
+            logger.info(f"Rating sentiment analysis completed: {analysis_type}")
+            return result
+
+        except DataValidationError:
+            raise
+        except Exception as e:
+            logger.error(f"Error analyzing rating sentiment: {str(e)}")
+            raise DataAnalysisError(f"Failed to analyze rating sentiment: {str(e)}")
+
+    def _interpret_movie_sentiment(self, polarization: float, consensus: float) -> str:
+        """Interpret movie sentiment metrics"""
+        if consensus > 80:
+            return "Strong consensus - Most viewers agree on this movie"
+        elif polarization > 40:
+            return "Highly polarizing - Divides audiences between love and hate"
+        elif polarization > 20:
+            return "Moderately divisive - Mixed but leaning toward one sentiment"
+        else:
+            return "General agreement with some variation in opinions"
+
+    def _interpret_user_sentiment(self, user_type: str, positive_pct: float, negative_pct: float) -> str:
+        """Interpret user sentiment behavior"""
+        if user_type == 'optimistic_rater':
+            return f"Optimistic rater - Tends to rate movies positively ({positive_pct:.1f}% positive ratings)"
+        elif user_type == 'critical_rater':
+            return f"Critical rater - More selective with high ratings ({negative_pct:.1f}% negative ratings)"
+        else:
+            return "Balanced rater - Provides varied ratings across the spectrum"

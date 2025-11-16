@@ -21,6 +21,12 @@ from .analysis import (
     CorrelationAnalysisResponse,
     VisualizationRequest,
     VisualizationResponse,
+    ClusteringRequest,
+    TrendAnalysisRequest,
+    AnomalyDetectionRequest,
+    AdvancedAnalyticsResponse,
+    RatingSentimentRequest,
+    RatingSentimentResponse,
 )
 from .health import HealthCheckResponse
 
@@ -45,5 +51,11 @@ __all__ = [
     "CorrelationAnalysisResponse",
     "VisualizationRequest",
     "VisualizationResponse",
+    "ClusteringRequest",
+    "TrendAnalysisRequest",
+    "AnomalyDetectionRequest",
+    "AdvancedAnalyticsResponse",
+    "RatingSentimentRequest",
+    "RatingSentimentResponse",
     "HealthCheckResponse",
 ]
