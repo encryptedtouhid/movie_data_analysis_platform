@@ -55,7 +55,12 @@ dmypy.json
 
 # Logs
 *.log
+logs/**/*.log
+logs/*/
+!logs/.gitkeep
 
-# Data (processed files)
+# Data (processed and temp files)
 data/processed/*
 !data/processed/.gitkeep
+data/temp/*
+!data/temp/.gitkeep

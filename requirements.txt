@@ -6,6 +6,7 @@ numpy>=1.21.0
 fastapi>=0.85.0
 pydantic>=1.10.0
 uvicorn>=0.18.0
+python-dotenv>=0.19.0
 
 # Visualization
 matplotlib>=3.5.0
