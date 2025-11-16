@@ -9,7 +9,9 @@ from src.core.config import settings
 from src.models import (
     TopMoviesRequest,
     TopMoviesResponse,
+    TopMoviesInsights,
     GenreTrendsResponse,
+    GenreTrendsInsights,
     UserStatisticsRequest,
     UserStatisticsResponse,
     TimeSeriesResponse,
@@ -22,6 +24,7 @@ from src.models import (
     AdvancedAnalyticsResponse,
     RatingSentimentRequest,
     RatingSentimentResponse,
+    SentimentInsights,
 )
 
 logger = get_logger("analysis_api", "api")
@@ -55,11 +58,20 @@ async def get_top_movies(request: TopMoviesRequest) -> TopMoviesResponse:
             min_ratings=request.min_ratings
         )
 
+        # Generate insights
+        insights_dict = movie_analyzer._generate_top_movies_insights(
+            top_movies,
+            request.min_ratings,
+            len(top_movies)
+        )
+        insights = TopMoviesInsights(**insights_dict)
+
         return TopMoviesResponse(
             status="success",
             message=f"Retrieved top {len(top_movies)} movies",
             top_movies=top_movies,
-            total_found=len(top_movies)
+            total_found=len(top_movies),
+            insights=insights
         )
 
     except DataValidationError as e:
@@ -94,10 +106,15 @@ async def analyze_genre_trends() -> GenreTrendsResponse:
 
         genre_analysis = movie_analyzer.analyze_genre_trends()
 
+        # Extract insights from genre_analysis
+        insights_dict = genre_analysis.pop('insights', None)
+        insights = GenreTrendsInsights(**insights_dict) if insights_dict else None
+
         return GenreTrendsResponse(
             status="success",
             message=f"Analyzed {genre_analysis.get('total_genres', 0)} genres",
-            genre_analysis=genre_analysis
+            genre_analysis=genre_analysis,
+            insights=insights
         )
 
     except DataValidationError as e:
@@ -504,10 +521,15 @@ async def rating_sentiment_analysis(request: RatingSentimentRequest):
             user_id=request.user_id
         )
 
+        # Extract insights from result
+        insights_dict = result.pop('insights', None)
+        insights = SentimentInsights(**insights_dict) if insights_dict else None
+
         return RatingSentimentResponse(
             status="success",
             message=f"Rating sentiment analysis completed: {request.analysis_type}",
-            sentiment_analysis=result
+            sentiment_analysis=result,
+            insights=insights
         )
 
     except DataValidationError as e:
