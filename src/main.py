@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from src.core.config import settings
-from src.api.routes import health, data_processing, analysis, home
+from src.api.routes import health, data_processing, analysis, home, recommendations
 from src.utils.logger import get_logger
 
 logger = get_logger("main_app", "core")
@@ -49,6 +49,12 @@ app.include_router(
     analysis.router,
     prefix=settings.api_v1_prefix + "/analysis",
     tags=["Analysis"],
+)
+
+app.include_router(
+    recommendations.router,
+    prefix=settings.api_v1_prefix,
+    tags=["ML Recommendations"],
 )
 
 # Mount static files for visualizations

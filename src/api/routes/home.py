@@ -364,6 +364,32 @@ async def home():
             </div>
         </div>
 
+        <div class="section">
+            <h2>🤖 ML Recommendations</h2>
+            <div class="endpoint-grid">
+                <div class="endpoint-card" onclick="callEndpoint('/api/v1/recommendations/similar_movies', 'POST', {{movie_id: 1, limit: 10, min_common_ratings: 50}})">
+                    <h3>Similar Movies</h3>
+                    <p>Content-based filtering: Find movies similar to a given movie</p>
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/v1/recommendations/similar_movies</span>
+                </div>
+
+                <div class="endpoint-card" onclick="callEndpoint('/api/v1/recommendations/user_recommendations', 'POST', {{user_id: 1, limit: 10, min_user_overlap: 50}})">
+                    <h3>User Recommendations</h3>
+                    <p>Collaborative filtering: Personalized movie recommendations</p>
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/v1/recommendations/user_recommendations</span>
+                </div>
+
+                <div class="endpoint-card" onclick="callEndpoint('/api/v1/recommendations/status', 'GET')">
+                    <h3>Recommender Status</h3>
+                    <p>Check ML recommendation engine initialization status</p>
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/api/v1/recommendations/status</span>
+                </div>
+            </div>
+        </div>
+
         <div class="footer">
             <div>Movie Data Analysis Platform</div>
             <div>Developed by: <a href="https://github.com/encryptedtouhid" target="_blank">Khaled Md Tuhidul Hossain</a></div>
