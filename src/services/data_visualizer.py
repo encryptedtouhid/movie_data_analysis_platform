@@ -290,123 +290,149 @@ class DataVisualizer:
             box-sizing: border-box;
         }}
         body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background: #ffffff;
             padding: 20px;
-            min-height: 100vh;
+            color: #24292f;
+            line-height: 1.6;
         }}
         .container {{
-            max-width: 1400px;
+            max-width: 1280px;
             margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
         }}
         header {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 40px;
-            text-align: center;
         }}
         header h1 {{
-            font-size: 2.5em;
-            margin-bottom: 10px;
+            font-size: 32px;
+            font-weight: 600;
+            color: #24292f;
+            margin-bottom: 8px;
         }}
         header p {{
-            font-size: 1.1em;
-            opacity: 0.9;
+            font-size: 14px;
+            color: #57606a;
         }}
         .content {{
-            padding: 40px;
+            padding: 0;
         }}
         .section {{
-            margin-bottom: 40px;
+            margin-bottom: 48px;
         }}
         .section h2 {{
-            color: #667eea;
-            border-bottom: 3px solid #667eea;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-            font-size: 1.8em;
+            color: #24292f;
+            border-bottom: 1px solid #d0d7de;
+            padding-bottom: 8px;
+            margin-bottom: 16px;
+            font-size: 24px;
+            font-weight: 600;
         }}
         .stats-grid {{
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            gap: 16px;
+            margin-bottom: 24px;
         }}
         .stat-card {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            background: #f6f8fa;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            padding: 16px;
         }}
         .stat-card h3 {{
-            font-size: 0.9em;
-            opacity: 0.9;
-            margin-bottom: 10px;
+            font-size: 12px;
+            color: #57606a;
+            margin-bottom: 8px;
+            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 1px;
         }}
         .stat-card .value {{
-            font-size: 2em;
-            font-weight: bold;
+            font-size: 24px;
+            font-weight: 600;
+            color: #24292f;
         }}
         table {{
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            overflow: hidden;
         }}
         th {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px;
+            background: #f6f8fa;
+            color: #24292f;
+            padding: 12px 16px;
             text-align: left;
             font-weight: 600;
+            font-size: 14px;
+            border-bottom: 1px solid #d0d7de;
         }}
         td {{
-            padding: 12px 15px;
-            border-bottom: 1px solid #eee;
+            padding: 12px 16px;
+            border-bottom: 1px solid #d0d7de;
+            font-size: 14px;
+        }}
+        tr:last-child td {{
+            border-bottom: none;
         }}
         tr:hover {{
-            background: #f8f9ff;
+            background: #f6f8fa;
         }}
         .footer {{
-            text-align: center;
-            padding: 30px;
-            background: #f8f9ff;
-            color: #666;
-            font-size: 0.9em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 32px 0;
+            border-top: 1px solid #d0d7de;
+            margin-top: 48px;
+            color: #57606a;
+            font-size: 14px;
         }}
-        .chart-placeholder {{
-            background: #f8f9ff;
-            border: 2px dashed #667eea;
-            border-radius: 10px;
-            padding: 40px;
-            text-align: center;
-            color: #667eea;
-            margin: 20px 0;
+        .footer a {{
+            color: #0969da;
+            text-decoration: none;
+        }}
+        .footer a:hover {{
+            text-decoration: underline;
         }}
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🎬 Movie Data Analysis Dashboard</h1>
-            <p>Generated on {datetime.now().strftime('%B %d, %Y at %I:%M %p')}</p>
+            <h1>Movie Data Analysis Dashboard</h1>
         </header>
 
         <div class="content">
+"""
+
+        # Add time series summary first
+        if 'time_series' in data and 'peak_activity' in data['time_series']:
+            peak = data['time_series']['peak_activity']
+            html += f"""
+            <div class="section">
+                <h2>Time Series Insights</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Most Active Year</h3>
+                        <div class="value">{peak.get('most_active_year', 'N/A')}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Most Active Day</h3>
+                        <div class="value">{peak.get('most_active_day', 'N/A')}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Highest Rated Year</h3>
+                        <div class="value">{peak.get('highest_avg_rating_year', 'N/A')}</div>
+                    </div>
+                </div>
+            </div>
 """
 
         # Add top movies section
         if 'top_movies' in data and data['top_movies']:
             html += """
             <div class="section">
-                <h2>🏆 Top Rated Movies</h2>
+                <h2>Top Rated Movies</h2>
                 <table>
                     <thead>
                         <tr>
@@ -442,7 +468,7 @@ class DataVisualizer:
             top_genres = data['genre_analysis']['genres'][:10]
             html += """
             <div class="section">
-                <h2>🎭 Genre Analysis</h2>
+                <h2>Genre Analysis</h2>
                 <table>
                     <thead>
                         <tr>
@@ -471,35 +497,12 @@ class DataVisualizer:
             </div>
 """
 
-        # Add time series summary
-        if 'time_series' in data and 'peak_activity' in data['time_series']:
-            peak = data['time_series']['peak_activity']
-            html += f"""
-            <div class="section">
-                <h2>📊 Time Series Insights</h2>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <h3>Most Active Year</h3>
-                        <div class="value">{peak.get('most_active_year', 'N/A')}</div>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Most Active Day</h3>
-                        <div class="value">{peak.get('most_active_day', 'N/A')}</div>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Highest Rated Year</h3>
-                        <div class="value">{peak.get('highest_avg_rating_year', 'N/A')}</div>
-                    </div>
-                </div>
-            </div>
-"""
-
         html += """
         </div>
 
         <div class="footer">
-            <p>📊 Movie Data Analysis Platform | Powered by Python, Pandas & FastAPI</p>
-            <p>🤖 Generated with Claude Code</p>
+            <div>Movie Data Analysis Platform</div>
+            <div>Developed by: <a href="https://github.com/encryptedtouhid" target="_blank">Khaled Md Tuhidul Hossain</a></div>
         </div>
     </div>
 </body>
