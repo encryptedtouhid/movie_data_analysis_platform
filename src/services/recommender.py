@@ -1,11 +1,3 @@
-"""
-Machine Learning Recommendation Service
-
-This module provides movie recommendations using:
-1. Content-based filtering (similar movies based on genre and ratings)
-2. Collaborative filtering (user-based recommendations)
-"""
-
 import pandas as pd
 import numpy as np
 from typing import List, Dict, Tuple, Optional

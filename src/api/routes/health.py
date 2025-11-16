@@ -2,7 +2,7 @@ from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter
 from src.utils.logger import get_logger
-from src.models.health import HealthCheckResponse, DataFileStatus
+from src.models.health import HealthCheckResponse, DataFileStatus, RecommenderStatus
 from src.core.config import settings
 
 logger = get_logger("health_api", "api")
@@ -10,6 +10,15 @@ router = APIRouter()
 
 # Required data files
 REQUIRED_DATA_FILES = ["movies.dat", "ratings.dat", "tags.dat", "users.dat"]
+
+def get_recommender_instance():
+    """Get the shared recommender instance for health check."""
+    try:
+        from src.api.routes.recommendations import get_recommender
+        return get_recommender()
+    except Exception as e:
+        logger.error(f"Failed to get recommender instance: {str(e)}")
+        return None
 
 
 @router.get(
@@ -21,13 +30,19 @@ REQUIRED_DATA_FILES = ["movies.dat", "ratings.dat", "tags.dat", "users.dat"]
 
     Validates:
     - Service availability
-    - Required data files existence in raw folder
+    - Required data files existence in raw folder (movies.dat, ratings.dat, tags.dat, users.dat)
     - Data file sizes
+    - ML recommendation engine status
 
     Status codes:
     - **healthy**: All systems operational, all data files present
     - **degraded**: Service running but some data files missing
     - **unhealthy**: Critical issues detected
+
+    Recommender status:
+    - **ready**: Recommender initialized and ready to use
+    - **not_initialized**: Recommender not yet initialized (lazy loading)
+    - **error**: Error during recommender initialization
     """,
     tags=["Health"],
 )
@@ -67,6 +82,26 @@ async def health_check() -> HealthCheckResponse:
             path=str(file_path)
         )
 
+    # Check recommender status
+    recommender_status_dict = {
+        "initialized": False,
+        "status": "not_initialized",
+        "algorithms": [
+            "Content-based filtering (similar movies)",
+            "Collaborative filtering (user recommendations)"
+        ]
+    }
+
+    try:
+        recommender = get_recommender_instance()
+        if recommender is not None:
+            recommender_status_dict["initialized"] = recommender._is_initialized
+            recommender_status_dict["status"] = "ready" if recommender._is_initialized else "not_initialized"
+            logger.debug(f"Recommender status: {recommender_status_dict['status']}")
+    except Exception as e:
+        logger.error(f"Error checking recommender status: {str(e)}")
+        recommender_status_dict["status"] = "error"
+
     # Determine overall status
     if all_files_present:
         overall_status = "healthy"
@@ -81,7 +116,8 @@ async def health_check() -> HealthCheckResponse:
         timestamp=datetime.utcnow().isoformat(),
         service="Movie Data Analysis Platform",
         version="1.0.0",
-        data_files=data_files_status
+        data_files=data_files_status,
+        recommender=RecommenderStatus(**recommender_status_dict)
     )
 
     logger.debug(f"Health check response: {response.dict()}")

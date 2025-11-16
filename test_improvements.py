@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-"""
-Quick test to verify the improvements made to the data processor
-"""
 import sys
 import time
 import pandas as pd

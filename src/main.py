@@ -72,6 +72,17 @@ async def startup_event() -> None:
     logger.info(f"Health check: http://{settings.host}:{settings.port}{settings.api_v1_prefix}/health")
     logger.info("=" * 50)
 
+    # Pre-initialize ML recommender for faster first requests
+    logger.info("Pre-loading ML recommendation engine...")
+    try:
+        from src.api.routes.recommendations import get_recommender
+        recommender = get_recommender()
+        recommender.initialize()
+        logger.info("✅ ML recommendation engine initialized successfully")
+    except Exception as e:
+        logger.error(f"⚠️  Failed to initialize ML recommender: {str(e)}")
+        logger.warning("ML recommendations will initialize on first use")
+
 
 @app.on_event("shutdown")
 async def shutdown_event() -> None:

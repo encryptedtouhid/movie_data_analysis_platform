@@ -1,7 +1,3 @@
-"""
-Data Visualization Service
-Generate charts, plots, and HTML reports from movie analysis data
-"""
 import pandas as pd
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend

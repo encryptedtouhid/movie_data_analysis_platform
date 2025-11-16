@@ -1,6 +1,3 @@
-"""
-Pydantic models for movie analysis endpoints
-"""
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel, Field
 

@@ -1,6 +1,3 @@
-"""
-Home Page Route
-"""
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 from src.core.config import settings
@@ -379,13 +376,6 @@ async def home():
                     <p>Collaborative filtering: Personalized movie recommendations</p>
                     <span class="method post">POST</span>
                     <span class="endpoint-path">/api/v1/recommendations/user_recommendations</span>
-                </div>
-
-                <div class="endpoint-card" onclick="callEndpoint('/api/v1/recommendations/status', 'GET')">
-                    <h3>Recommender Status</h3>
-                    <p>Check ML recommendation engine initialization status</p>
-                    <span class="method get">GET</span>
-                    <span class="endpoint-path">/api/v1/recommendations/status</span>
                 </div>
             </div>
         </div>

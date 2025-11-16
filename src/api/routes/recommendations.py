@@ -1,7 +1,3 @@
-"""
-API routes for ML-based movie recommendations.
-"""
-
 from fastapi import APIRouter, HTTPException, status
 from typing import Optional
 import logging
@@ -207,29 +203,3 @@ async def get_user_recommendations(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected error occurred: {str(e)}"
         )
-
-
-@router.get(
-    "/status",
-    status_code=status.HTTP_200_OK,
-    summary="Check Recommender Status",
-    description="Check if the recommendation engine is initialized and ready"
-)
-async def get_recommender_status():
-    """
-    Check the status of the recommendation engine.
-
-    Returns:
-        Status information including initialization state
-    """
-    recommender = get_recommender()
-
-    return {
-        "status": "ready" if recommender._is_initialized else "not_initialized",
-        "initialized": recommender._is_initialized,
-        "service": "ML Recommendation Engine",
-        "algorithms": [
-            "Content-based filtering (similar movies)",
-            "Collaborative filtering (user recommendations)"
-        ]
-    }

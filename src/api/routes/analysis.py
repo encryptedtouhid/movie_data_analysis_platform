@@ -1,7 +1,3 @@
-"""
-Analysis API Routes
-Endpoints for movie data analysis and visualization
-"""
 from fastapi import APIRouter, HTTPException
 from pathlib import Path
 from src.services.movie_analyzer import MovieAnalyzer
