@@ -108,11 +108,21 @@ class DataVisualizer:
             # Convert to DataFrame
             genres_df = pd.DataFrame(genre_data['genres'])
 
+            # Normalize column names to handle different naming conventions
+            if 'avg_rating' in genres_df.columns and 'average_rating' not in genres_df.columns:
+                genres_df['average_rating'] = genres_df['avg_rating']
+            if 'popularity' in genres_df.columns and 'popularity_score' not in genres_df.columns:
+                genres_df['popularity_score'] = genres_df['popularity']
+
+            # Add default rating_count if not present
+            if 'rating_count' not in genres_df.columns:
+                genres_df['rating_count'] = genres_df.get('popularity_score', 0)
+
             # Create figure with subplots
             fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(16, 12))
 
             # 1. Top genres by rating count
-            top_genres = genres_df.nlargest(15, 'rating_count')
+            top_genres = genres_df.nlargest(min(15, len(genres_df)), 'rating_count')
             ax1.barh(top_genres['genre'], top_genres['rating_count'], color='steelblue', edgecolor='black')
             ax1.set_xlabel('Number of Ratings', fontsize=11)
             ax1.set_title('Top 15 Genres by Rating Count', fontsize=13, fontweight='bold')

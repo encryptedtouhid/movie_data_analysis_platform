@@ -87,14 +87,25 @@ class MovieAnalyzer:
         try:
             logger.info(f"Getting top {limit} movies (min_ratings={min_ratings})")
 
+            # If combined_df is None but movies_df and ratings_df are set, combine them
+            if self.combined_df is None and self.movies_df is not None and self.ratings_df is not None:
+                if self.movies_df.empty or self.ratings_df.empty:
+                    logger.info("Empty DataFrames provided, returning empty result")
+                    return []
+                self.combined_df = pd.merge(
+                    self.ratings_df,
+                    self.movies_df,
+                    on='movieId',
+                    how='left'
+                )
+
+            # Only load datasets if no data is available at all
             if self.combined_df is None:
                 self.load_datasets()
 
             if self.combined_df is None or self.combined_df.empty:
-                raise DataValidationError(
-                    "No data available for analysis. Please run 'Load Data' first from the Data Processing section, "
-                    "or use the 'Process All Data' endpoint to load and prepare all datasets."
-                )
+                logger.info("No data available, returning empty result")
+                return []
 
             # Calculate movie statistics
             movie_stats = self.combined_df.groupby('movieId').agg({

@@ -189,16 +189,12 @@ class DataProcessor(BaseProcessor):
                 logger.error(f"Unsupported file format: {path.suffix}")
                 raise DataLoadError(f"Unsupported file format: {path.suffix}")
 
-            if df.empty:
-                logger.error(f"File is empty: {file_path}")
-                raise DataValidationError(f"File is empty: {file_path}")
-
             logger.info(f"Data loaded successfully. Rows: {len(df)}, Columns: {list(df.columns)}")
             return df
 
         except pd.errors.EmptyDataError as e:
-            logger.error(f"File contains no data: {str(e)}")
-            raise DataLoadError("File contains no data", str(e))
+            logger.warning(f"File contains no data: {str(e)}, returning empty DataFrame")
+            return pd.DataFrame()
         except pd.errors.ParserError as e:
             logger.error(f"Failed to parse file: {str(e)}")
             raise DataLoadError("Failed to parse file", str(e))
@@ -210,8 +206,8 @@ class DataProcessor(BaseProcessor):
         try:
             logger.info(f"Starting data cleaning. Initial rows: {len(df)}")
             if df.empty:
-                logger.error("Cannot clean empty DataFrame")
-                raise DataValidationError("Cannot clean empty DataFrame")
+                logger.warning("Empty DataFrame provided, returning empty DataFrame")
+                return pd.DataFrame()
 
             cleaned_df: pd.DataFrame = df.copy()
             initial_rows = len(cleaned_df)
@@ -271,10 +267,20 @@ class DataProcessor(BaseProcessor):
         try:
             logger.info("Starting comprehensive statistics aggregation")
             if df.empty:
-                logger.error("Cannot aggregate statistics on empty DataFrame")
-                raise DataValidationError("Cannot aggregate statistics on empty DataFrame")
+                logger.warning("Empty DataFrame provided, returning minimal statistics")
+                return {
+                    'total_rows': 0,
+                    'total_columns': 0,
+                    'total_records': 0,
+                    'columns': [],
+                    'data_types': {},
+                    'missing_values': {},
+                    'memory_usage_mb': 0.0
+                }
 
             stats: Dict[str, Any] = {
+                'total_rows': int(len(df)),
+                'total_columns': int(len(df.columns)),
                 'total_records': int(len(df)),
                 'columns': list(df.columns),
                 'data_types': {col: str(dtype) for col, dtype in df.dtypes.items()},
@@ -444,8 +450,8 @@ class DataProcessor(BaseProcessor):
         try:
             logger.info(f"Starting data filtering with filters: {filters}")
             if df.empty:
-                logger.error("Cannot filter empty DataFrame")
-                raise DataValidationError("Cannot filter empty DataFrame")
+                logger.warning("Empty DataFrame provided, returning empty DataFrame")
+                return pd.DataFrame()
 
             filtered_df: pd.DataFrame = df.copy()
             initial_rows = len(filtered_df)
@@ -460,13 +466,14 @@ class DataProcessor(BaseProcessor):
                 filtered_df = filtered_df[filtered_df['rating'] <= max_rating]
                 logger.debug(f"Applied max_rating filter: {max_rating}, Rows: {len(filtered_df)}")
 
-            if 'user_id' in filters and 'userId' in filtered_df.columns:
-                user_id: int = int(filters['user_id'])
+            # Check for both camelCase and snake_case parameter names
+            if ('user_id' in filters or 'userId' in filters) and 'userId' in filtered_df.columns:
+                user_id: int = int(filters.get('user_id', filters.get('userId')))
                 filtered_df = filtered_df[filtered_df['userId'] == user_id]
                 logger.debug(f"Applied user_id filter: {user_id}, Rows: {len(filtered_df)}")
 
-            if 'movie_id' in filters and 'movieId' in filtered_df.columns:
-                movie_id: int = int(filters['movie_id'])
+            if ('movie_id' in filters or 'movieId' in filters) and 'movieId' in filtered_df.columns:
+                movie_id: int = int(filters.get('movie_id', filters.get('movieId')))
                 filtered_df = filtered_df[filtered_df['movieId'] == movie_id]
                 logger.debug(f"Applied movie_id filter: {movie_id}, Rows: {len(filtered_df)}")
 
@@ -554,12 +561,12 @@ class DataProcessor(BaseProcessor):
         """
         try:
             logger.info(f"Exporting data to JSON: {file_path}")
-            if df.empty:
-                logger.error("Cannot export empty DataFrame")
-                raise DataValidationError("Cannot export empty DataFrame")
 
             output_path: Path = Path(file_path)
             output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            if df.empty:
+                logger.warning("Empty DataFrame provided, exporting empty JSON file")
 
             # Convert to JSON with proper formatting
             df.to_json(output_path, orient=orient, indent=indent, force_ascii=False)
@@ -594,12 +601,12 @@ class DataProcessor(BaseProcessor):
         """
         try:
             logger.info(f"Exporting data to CSV: {file_path}")
-            if df.empty:
-                logger.error("Cannot export empty DataFrame")
-                raise DataValidationError("Cannot export empty DataFrame")
 
             output_path: Path = Path(file_path)
             output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            if df.empty:
+                logger.warning("Empty DataFrame provided, exporting empty CSV file")
 
             # Export with chunking for large datasets
             if len(df) > self.chunk_size:
@@ -614,3 +621,32 @@ class DataProcessor(BaseProcessor):
         except Exception as e:
             logger.error(f"Failed to export to CSV: {str(e)}")
             raise DataProcessingError("Failed to export to CSV", str(e))
+
+    def export_data(
+        self,
+        df: pd.DataFrame,
+        file_path: str,
+        format: str = 'csv',
+        **kwargs: Any
+    ) -> str:
+        """
+        Export DataFrame to file with specified format.
+
+        Args:
+            df: DataFrame to export
+            file_path: Path where file will be saved
+            format: Export format ('csv' or 'json')
+            **kwargs: Additional arguments passed to specific export method
+
+        Returns:
+            str: Absolute path to the saved file
+
+        Raises:
+            DataProcessingError: If export fails
+        """
+        if format.lower() == 'csv':
+            return self.export_to_csv(df, file_path, **kwargs)
+        elif format.lower() == 'json':
+            return self.export_to_json(df, file_path, **kwargs)
+        else:
+            raise DataProcessingError(f"Unsupported export format: {format}")
