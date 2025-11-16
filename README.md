@@ -167,6 +167,28 @@ The server will start at:
 - **ReDoc**: http://127.0.0.1:8000/redoc
 - **Health Check**: http://127.0.0.1:8000/api/v1/health
 
+## Screenshots
+
+### Interactive Web Interface
+
+The platform includes an interactive home page for easy navigation and data exploration:
+
+![Home Page](assets/home%20page.png)
+
+### Data Analysis & Visualization
+
+Comprehensive charts and statistical visualizations:
+
+![Charts and Analytics](assets/charts.png)
+
+### Machine Learning Recommendations
+
+Real-time movie recommendations powered by collaborative filtering:
+
+![ML Recommendations](assets/ml%20example.png)
+
+---
+
 ### Using the Jupyter Notebook
 
 ```bash
@@ -317,7 +339,7 @@ movie-data-analysis-platform/
 │   ├── integration/        # API integration tests
 │   └── performance/        # Performance benchmarks
 ├── data/
-│   └── ml-10m/            # MovieLens dataset (user-provided)
+│   
 ├── docs/                  # Documentation
 ├── movie_data_analysis_report.ipynb  # Jupyter analysis report
 ├── pyproject.toml         # Project configuration
