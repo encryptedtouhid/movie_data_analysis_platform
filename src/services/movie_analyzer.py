@@ -287,6 +287,9 @@ class MovieAnalyzer:
             logger.info(f"Generated statistics for user {user_id}")
             return stats
 
+        except DataValidationError:
+            # Re-raise validation errors as-is (will result in 400/404)
+            raise
         except Exception as e:
             logger.error(f"Failed to get user statistics: {str(e)}")
             raise DataAnalysisError(f"Failed to get user statistics for user {user_id}", str(e))
@@ -907,7 +910,10 @@ class MovieAnalyzer:
 
             logger.info(f"Trend analysis completed: {overall_trend} trend detected")
             return result
-            
+
+        except DataValidationError:
+            # Re-raise validation errors as-is (will result in 400)
+            raise
         except Exception as e:
             logger.error(f"Error performing trend analysis: {str(e)}")
             raise DataAnalysisError(f"Failed to perform trend analysis: {str(e)}")
@@ -1052,6 +1058,9 @@ class MovieAnalyzer:
             logger.info(f"Anomaly detection completed: {len(anomalies_results['anomalous_users'])} anomalous users, {len(anomalies_results['anomalous_movies'])} anomalous movies")
             return anomalies_results
 
+        except DataValidationError:
+            # Re-raise validation errors as-is (will result in 400)
+            raise
         except Exception as e:
             logger.error(f"Error detecting anomalies: {str(e)}")
             raise DataAnalysisError(f"Failed to detect anomalies: {str(e)}")
@@ -1081,6 +1090,20 @@ class MovieAnalyzer:
         """
         try:
             logger.info(f"Performing rating sentiment analysis: {analysis_type}")
+
+            # Validate analysis_type
+            valid_types = ['overall', 'movie_sentiment', 'user_sentiment', 'temporal_sentiment']
+            if analysis_type not in valid_types:
+                raise DataValidationError(
+                    f"Invalid analysis_type: '{analysis_type}'. Must be one of: {', '.join(valid_types)}"
+                )
+
+            # Validate required parameters for specific analysis types
+            if analysis_type == 'movie_sentiment' and movie_id is None:
+                raise DataValidationError("movie_id is required for movie_sentiment analysis")
+
+            if analysis_type == 'user_sentiment' and user_id is None:
+                raise DataValidationError("user_id is required for user_sentiment analysis")
 
             if self.ratings_df is None:
                 self.load_datasets()

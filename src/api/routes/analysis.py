@@ -411,7 +411,13 @@ async def trend_analysis(request: TrendAnalysisRequest):
             analysis_type="trend_analysis",
             result=result
         )
-        
+
+    except DataValidationError as e:
+        logger.error(f"Validation error: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except DataAnalysisError as e:
+        logger.error(f"Analysis error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         logger.error(f"Error in trend analysis: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -459,6 +465,12 @@ async def anomaly_detection(request: AnomalyDetectionRequest):
             result=result
         )
 
+    except DataValidationError as e:
+        logger.error(f"Validation error: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except DataAnalysisError as e:
+        logger.error(f"Analysis error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         logger.error(f"Error in anomaly detection: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
