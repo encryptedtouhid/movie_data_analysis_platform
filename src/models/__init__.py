@@ -11,6 +11,17 @@ from .data_processing import (
     ExportDataRequest,
     ExportDataResponse,
 )
+from .analysis import (
+    TopMoviesRequest,
+    TopMoviesResponse,
+    GenreTrendsResponse,
+    UserStatisticsRequest,
+    UserStatisticsResponse,
+    TimeSeriesResponse,
+    CorrelationAnalysisResponse,
+    VisualizationRequest,
+    VisualizationResponse,
+)
 from .health import HealthCheckResponse
 
 __all__ = [
@@ -25,5 +36,14 @@ __all__ = [
     "FilterDataResponse",
     "ExportDataRequest",
     "ExportDataResponse",
+    "TopMoviesRequest",
+    "TopMoviesResponse",
+    "GenreTrendsResponse",
+    "UserStatisticsRequest",
+    "UserStatisticsResponse",
+    "TimeSeriesResponse",
+    "CorrelationAnalysisResponse",
+    "VisualizationRequest",
+    "VisualizationResponse",
     "HealthCheckResponse",
 ]
