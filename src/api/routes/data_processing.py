@@ -204,14 +204,19 @@ async def load_data(request: LoadDataRequest) -> LoadDataResponse:
         df.to_csv(output_file, index=False)
         logger.info(f"Data saved to: {output_file}")
 
+        # Limit data preview to first 100 rows to avoid timeout with large datasets
+        preview_limit = 100
+        preview_data = df.head(preview_limit).to_dict(orient='records')
+        logger.info(f"Returning preview of first {preview_limit} rows out of {len(df)} total rows")
+
         return LoadDataResponse(
             status="success",
-            message=f"Data loaded from raw folder and saved to processed folder",
+            message=f"Data loaded from raw folder and saved to processed folder (showing first {preview_limit} rows)",
             source_file=str(source_file),
             output_file=str(output_file),
             rows=len(df),
             columns=list(df.columns),
-            data=df.to_dict(orient='records')
+            data=preview_data
         )
     except DataLoadError as e:
         logger.error(f"Load error: {str(e)}")
@@ -250,17 +255,21 @@ async def clean_data(request: CleanDataRequest) -> CleanDataResponse:
         cleaned_df.to_csv(output_file, index=False)
         logger.info(f"Cleaned data saved to: {output_file}")
 
-        logger.info(f"Data cleaned: {initial_rows} -> {final_rows} rows")
+        # Limit data preview to first 100 rows to avoid timeout with large datasets
+        preview_limit = 100
+        preview_data = cleaned_df.head(preview_limit).to_dict(orient='records')
+        logger.info(f"Data cleaned: {initial_rows} -> {final_rows} rows (returning preview of first {preview_limit} rows)")
+
         return CleanDataResponse(
             status="success",
-            message="Data cleaned and saved successfully",
+            message=f"Data cleaned and saved successfully (showing first {preview_limit} rows)",
             source_file=str(source_file),
             output_file=str(output_file),
             initial_rows=initial_rows,
             final_rows=final_rows,
             rows_removed=initial_rows - final_rows,
             columns=list(cleaned_df.columns),
-            data=cleaned_df.to_dict(orient='records')
+            data=preview_data
         )
     except DataLoadError as e:
         logger.error(f"Load error: {str(e)}")
@@ -403,6 +412,10 @@ async def filter_data(request: FilterDataRequest) -> FilterDataResponse:
                     filtered_df = data_processor.filter_data(df, **filters)
                     filtered_rows = len(filtered_df)
 
+                    # Limit preview for each dataset
+                    preview_limit = 100
+                    preview_data = filtered_df.head(preview_limit).to_dict(orient='records')
+
                     combined_results["datasets_included"].append(dataset_name)
                     combined_results["total_datasets"] += 1
                     combined_results["total_original_rows"] += original_rows
@@ -411,7 +424,8 @@ async def filter_data(request: FilterDataRequest) -> FilterDataResponse:
                     combined_results["individual_dataset_results"][dataset_name] = {
                         "original_rows": original_rows,
                         "filtered_rows": filtered_rows,
-                        "data": filtered_df.to_dict(orient='records')
+                        "data": preview_data,
+                        "preview_note": f"Showing first {min(preview_limit, filtered_rows)} of {filtered_rows} rows"
                     }
                     logger.info(f"Filtered {dataset_name}: {original_rows} -> {filtered_rows} rows")
                 else:
@@ -438,14 +452,18 @@ async def filter_data(request: FilterDataRequest) -> FilterDataResponse:
             df = data_processor.load_data(str(cleaned_file))
             filtered_df = data_processor.filter_data(df, **filters)
 
-            logger.info(f"Data filtered: {len(df)} -> {len(filtered_df)} rows")
+            # Limit data preview to first 1000 rows to avoid timeout with large result sets
+            preview_limit = 1000
+            preview_data = filtered_df.head(preview_limit).to_dict(orient='records')
+            logger.info(f"Data filtered: {len(df)} -> {len(filtered_df)} rows (returning preview of first {min(preview_limit, len(filtered_df))} rows)")
+
             return FilterDataResponse(
                 status="success",
-                message="Data filtered successfully",
+                message=f"Data filtered successfully (showing first {min(preview_limit, len(filtered_df))} of {len(filtered_df)} rows)",
                 original_rows=len(df),
                 filtered_rows=len(filtered_df),
                 filters_applied=filters,
-                data=filtered_df.to_dict(orient='records')
+                data=preview_data
             )
     except DataLoadError as e:
         logger.error(f"Load error: {str(e)}")
