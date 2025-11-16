@@ -620,12 +620,12 @@ def main():
         response = requests.get(f"{API_V1}/health", timeout=5)
         if response.status_code != 200:
             print_error("Server is not healthy!")
-            print_error(f"Please start: python -m uvicorn src.main:app --host 0.0.0.0 --port 8000")
+            print_error(f"Please start: python -m uvicorn src.main:app --host 127.0.0.1 --port 8000")
             sys.exit(1)
     except Exception as e:
         print_error(f"Server is not running at {BASE_URL}")
         print_error(f"Error: {str(e)}")
-        print_error(f"Please start: python -m uvicorn src.main:app --host 0.0.0.0 --port 8000")
+        print_error(f"Please start: python -m uvicorn src.main:app --host 127.0.0.1 --port 8000")
         sys.exit(1)
 
     print_success("Server is running!")

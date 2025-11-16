@@ -100,11 +100,11 @@ quality: lint type-check ## Run all code quality checks
 
 run: ## Run the application
 	@echo "$(GREEN)Starting Movie Data Analysis Platform...$(NC)"
-	$(UVICORN) $(MAIN_APP) --reload --host 0.0.0.0 --port 8000
+	$(UVICORN) $(MAIN_APP) --reload --host 127.0.0.1 --port 8000
 
 run-prod: ## Run the application in production mode
 	@echo "$(GREEN)Starting application in production mode...$(NC)"
-	$(UVICORN) $(MAIN_APP) --host 0.0.0.0 --port 8000 --workers 4
+	$(UVICORN) $(MAIN_APP) --host 127.0.0.1 --port 8000 --workers 4
 
 ##@ Docker
 

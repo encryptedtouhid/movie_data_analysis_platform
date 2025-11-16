@@ -11,7 +11,7 @@ class Settings(BaseModel):
     app_version: str = os.getenv("APP_VERSION", "1.0.0")
     api_v1_prefix: str = os.getenv("API_V1_PREFIX", "/api/v1")
 
-    host: str = os.getenv("HOST", "0.0.0.0")
+    host: str = os.getenv("HOST", "127.0.0.1")
     port: int = int(os.getenv("PORT", "8000"))
     debug: bool = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
 

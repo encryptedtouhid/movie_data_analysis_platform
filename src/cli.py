@@ -52,8 +52,8 @@ Examples:
     server_parser = subparsers.add_parser("server", help="Start the API server")
     server_parser.add_argument(
         "--host",
-        default="0.0.0.0",
-        help="Host to bind to (default: 0.0.0.0)",
+        default="127.0.0.1",
+        help="Host to bind to (default: 127.0.0.1)",
     )
     server_parser.add_argument(
         "--port",
@@ -132,7 +132,7 @@ Examples:
 
 
 def run_server(
-    host: str = "0.0.0.0",
+    host: str = "127.0.0.1",
     port: int = 8000,
     reload: bool = False,
     workers: int = 1,
