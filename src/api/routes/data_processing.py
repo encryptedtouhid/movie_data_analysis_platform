@@ -192,6 +192,48 @@ async def load_data(request: LoadDataRequest) -> LoadDataResponse:
     try:
         logger.info(f"Load data endpoint called for dataset: {request.dataset}")
 
+        # Handle "all" datasets
+        if request.dataset.lower() == "all":
+            logger.info("Loading all datasets")
+            datasets = ["movies", "ratings", "tags", "users"]
+            datasets_loaded = {}
+            total_rows = 0
+
+            for dataset_name in datasets:
+                source_file: Path = Path(settings.data_raw_path) / f"{dataset_name}.dat"
+
+                if source_file.exists():
+                    logger.info(f"Loading {dataset_name} dataset")
+                    df = data_processor.load_data(str(source_file))
+
+                    output_file: Path = Path(settings.data_processed_path) / f"{dataset_name}.csv"
+                    df.to_csv(output_file, index=False)
+
+                    datasets_loaded[dataset_name] = {
+                        "source_file": str(source_file),
+                        "output_file": str(output_file),
+                        "rows": len(df),
+                        "columns": list(df.columns),
+                        "status": "success"
+                    }
+                    total_rows += len(df)
+                    logger.info(f"Loaded {dataset_name}: {len(df)} rows")
+                else:
+                    logger.warning(f"Dataset file not found: {source_file}")
+                    datasets_loaded[dataset_name] = {
+                        "status": "not_found",
+                        "message": f"File {source_file} not found"
+                    }
+
+            successful_datasets = [k for k, v in datasets_loaded.items() if v.get("status") == "success"]
+
+            return LoadDataResponse(
+                status="success",
+                message=f"Loaded {len(successful_datasets)} datasets: {', '.join(successful_datasets)}. Total rows: {total_rows}",
+                datasets_loaded=datasets_loaded
+            )
+
+        # Handle single dataset
         source_file: Path = Path(settings.data_raw_path) / f"{request.dataset}.dat"
         if not source_file.exists():
             logger.error(f"Source file not found: {source_file}")
@@ -240,6 +282,57 @@ async def clean_data(request: CleanDataRequest) -> CleanDataResponse:
     try:
         logger.info(f"Clean data endpoint called for dataset: {request.dataset}")
 
+        # Handle "all" datasets
+        if request.dataset.lower() == "all":
+            logger.info("Cleaning all datasets")
+            datasets = ["movies", "ratings", "tags", "users"]
+            datasets_cleaned = {}
+            total_initial_rows = 0
+            total_final_rows = 0
+
+            for dataset_name in datasets:
+                source_file: Path = Path(settings.data_processed_path) / f"{dataset_name}.csv"
+
+                if source_file.exists():
+                    logger.info(f"Cleaning {dataset_name} dataset")
+                    df = data_processor.load_data(str(source_file))
+                    initial_rows = len(df)
+
+                    cleaned_df = data_processor.clean_data(df)
+                    final_rows = len(cleaned_df)
+
+                    output_file: Path = Path(settings.data_processed_path) / f"{dataset_name}_cleaned.csv"
+                    cleaned_df.to_csv(output_file, index=False)
+
+                    datasets_cleaned[dataset_name] = {
+                        "source_file": str(source_file),
+                        "output_file": str(output_file),
+                        "initial_rows": initial_rows,
+                        "final_rows": final_rows,
+                        "rows_removed": initial_rows - final_rows,
+                        "columns": list(cleaned_df.columns),
+                        "status": "success"
+                    }
+                    total_initial_rows += initial_rows
+                    total_final_rows += final_rows
+                    logger.info(f"Cleaned {dataset_name}: {initial_rows} -> {final_rows} rows")
+                else:
+                    logger.warning(f"Dataset file not found: {source_file}")
+                    datasets_cleaned[dataset_name] = {
+                        "status": "not_found",
+                        "message": f"File {source_file} not found. Please run load_data first."
+                    }
+
+            successful_datasets = [k for k, v in datasets_cleaned.items() if v.get("status") == "success"]
+            total_removed = total_initial_rows - total_final_rows
+
+            return CleanDataResponse(
+                status="success",
+                message=f"Cleaned {len(successful_datasets)} datasets: {', '.join(successful_datasets)}. Removed {total_removed} rows total",
+                datasets_cleaned=datasets_cleaned
+            )
+
+        # Handle single dataset
         source_file: Path = Path(settings.data_processed_path) / f"{request.dataset}.csv"
         if not source_file.exists():
             logger.error(f"Source file not found: {source_file}")

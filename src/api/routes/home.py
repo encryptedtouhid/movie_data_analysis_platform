@@ -258,16 +258,16 @@ async def home():
                     <span class="endpoint-path">/api/v1/dataprocess/process_all_data</span>
                 </div>
 
-                <div class="endpoint-card" onclick="callEndpoint('/api/v1/dataprocess/load_data', 'POST', {{dataset: 'ratings'}})">
-                    <h3>Load Data</h3>
-                    <p>Load specific dataset (movies, ratings, tags, users)</p>
+                <div class="endpoint-card" onclick="callEndpoint('/api/v1/dataprocess/load_data', 'POST', {{dataset: 'all'}})">
+                    <h3>Load All Data</h3>
+                    <p>Load all datasets (movies, ratings, tags, users) from raw folder</p>
                     <span class="method post">POST</span>
                     <span class="endpoint-path">/api/v1/dataprocess/load_data</span>
                 </div>
 
-                <div class="endpoint-card" onclick="callEndpoint('/api/v1/dataprocess/clean_data', 'POST', {{dataset: 'ratings'}})">
-                    <h3>Clean Data</h3>
-                    <p>Remove duplicates and handle missing values</p>
+                <div class="endpoint-card" onclick="callEndpoint('/api/v1/dataprocess/clean_data', 'POST', {{dataset: 'all'}})">
+                    <h3>Clean All Data</h3>
+                    <p>Remove duplicates and handle missing values from all datasets</p>
                     <span class="method post">POST</span>
                     <span class="endpoint-path">/api/v1/dataprocess/clean_data</span>
                 </div>

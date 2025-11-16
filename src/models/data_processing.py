@@ -19,11 +19,12 @@ class LoadDataRequest(BaseModel):
 class LoadDataResponse(BaseModel):
     status: str
     message: str
-    source_file: str
-    output_file: str
-    rows: int
-    columns: List[str]
-    data: List[Dict[str, Any]]
+    source_file: Optional[str] = None
+    output_file: Optional[str] = None
+    rows: Optional[int] = None
+    columns: Optional[List[str]] = None
+    data: Optional[List[Dict[str, Any]]] = None
+    datasets_loaded: Optional[Dict[str, Any]] = None  # For "all" datasets
 
 
 class CleanDataRequest(BaseModel):
@@ -33,13 +34,14 @@ class CleanDataRequest(BaseModel):
 class CleanDataResponse(BaseModel):
     status: str
     message: str
-    source_file: str
-    output_file: str
-    initial_rows: int
-    final_rows: int
-    rows_removed: int
-    columns: List[str]
-    data: List[Dict[str, Any]]
+    source_file: Optional[str] = None
+    output_file: Optional[str] = None
+    initial_rows: Optional[int] = None
+    final_rows: Optional[int] = None
+    rows_removed: Optional[int] = None
+    columns: Optional[List[str]] = None
+    data: Optional[List[Dict[str, Any]]] = None
+    datasets_cleaned: Optional[Dict[str, Any]] = None  # For "all" datasets
 
 
 class AggregateStatsRequest(BaseModel):

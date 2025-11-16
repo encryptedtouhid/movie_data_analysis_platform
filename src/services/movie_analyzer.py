@@ -33,21 +33,31 @@ class MovieAnalyzer:
         try:
             logger.info("Loading datasets for analysis")
 
-            # Load movies
-            movies_path = Path(settings.data_processed_path) / "movies_cleaned.csv"
-            if movies_path.exists():
-                self.movies_df = self.data_processor.load_data(str(movies_path))
-                logger.info(f"Loaded {len(self.movies_df)} movies")
-            else:
-                logger.warning(f"Movies file not found: {movies_path}")
+            # Load movies - try cleaned first, fall back to regular CSV
+            movies_path_cleaned = Path(settings.data_processed_path) / "movies_cleaned.csv"
+            movies_path_regular = Path(settings.data_processed_path) / "movies.csv"
 
-            # Load ratings
-            ratings_path = Path(settings.data_processed_path) / "ratings_cleaned.csv"
-            if ratings_path.exists():
-                self.ratings_df = self.data_processor.load_data(str(ratings_path))
-                logger.info(f"Loaded {len(self.ratings_df)} ratings")
+            if movies_path_cleaned.exists():
+                self.movies_df = self.data_processor.load_data(str(movies_path_cleaned))
+                logger.info(f"Loaded {len(self.movies_df)} movies from cleaned file")
+            elif movies_path_regular.exists():
+                self.movies_df = self.data_processor.load_data(str(movies_path_regular))
+                logger.info(f"Loaded {len(self.movies_df)} movies from regular file (cleaned version not found)")
             else:
-                logger.warning(f"Ratings file not found: {ratings_path}")
+                logger.warning(f"Movies file not found: tried {movies_path_cleaned} and {movies_path_regular}")
+
+            # Load ratings - try cleaned first, fall back to regular CSV
+            ratings_path_cleaned = Path(settings.data_processed_path) / "ratings_cleaned.csv"
+            ratings_path_regular = Path(settings.data_processed_path) / "ratings.csv"
+
+            if ratings_path_cleaned.exists():
+                self.ratings_df = self.data_processor.load_data(str(ratings_path_cleaned))
+                logger.info(f"Loaded {len(self.ratings_df)} ratings from cleaned file")
+            elif ratings_path_regular.exists():
+                self.ratings_df = self.data_processor.load_data(str(ratings_path_regular))
+                logger.info(f"Loaded {len(self.ratings_df)} ratings from regular file (cleaned version not found)")
+            else:
+                logger.warning(f"Ratings file not found: tried {ratings_path_cleaned} and {ratings_path_regular}")
 
             # Create combined dataset
             if self.movies_df is not None and self.ratings_df is not None:
@@ -81,7 +91,10 @@ class MovieAnalyzer:
                 self.load_datasets()
 
             if self.combined_df is None or self.combined_df.empty:
-                raise DataValidationError("No data available for analysis")
+                raise DataValidationError(
+                    "No data available for analysis. Please run 'Load Data' first from the Data Processing section, "
+                    "or use the 'Process All Data' endpoint to load and prepare all datasets."
+                )
 
             # Calculate movie statistics
             movie_stats = self.combined_df.groupby('movieId').agg({
@@ -144,7 +157,10 @@ class MovieAnalyzer:
                 self.load_datasets()
 
             if self.combined_df is None or self.combined_df.empty:
-                raise DataValidationError("No data available for analysis")
+                raise DataValidationError(
+                    "No data available for analysis. Please run 'Load Data' first from the Data Processing section, "
+                    "or use the 'Process All Data' endpoint to load and prepare all datasets."
+                )
 
             # Explode genres (split pipe-separated genres into separate rows)
             df_exploded = self.combined_df.copy()
@@ -217,7 +233,10 @@ class MovieAnalyzer:
                 self.load_datasets()
 
             if self.combined_df is None or self.combined_df.empty:
-                raise DataValidationError("No data available for analysis")
+                raise DataValidationError(
+                    "No data available for analysis. Please run 'Load Data' first from the Data Processing section, "
+                    "or use the 'Process All Data' endpoint to load and prepare all datasets."
+                )
 
             # Filter user ratings
             user_ratings = self.combined_df[self.combined_df['userId'] == user_id]
@@ -409,7 +428,10 @@ class MovieAnalyzer:
                 self.load_datasets()
 
             if self.combined_df is None or self.combined_df.empty:
-                raise DataValidationError("No data available for analysis")
+                raise DataValidationError(
+                    "No data available for analysis. Please run 'Load Data' first from the Data Processing section, "
+                    "or use the 'Process All Data' endpoint to load and prepare all datasets."
+                )
 
             # Calculate movie-level metrics
             movie_metrics = self.combined_df.groupby('movieId').agg({
