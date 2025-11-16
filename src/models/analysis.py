@@ -7,17 +7,37 @@ class TopMoviesRequest(BaseModel):
     min_ratings: int = Field(default=50, ge=1, description="Minimum number of ratings required")
 
 
+class TopMoviesInsights(BaseModel):
+    """Insights for top movies analysis"""
+    summary: str
+    key_finding: str
+    methodology_note: str
+    statistical_confidence: str
+    recommendation: str
+
+
 class TopMoviesResponse(BaseModel):
     status: str
     message: str
     top_movies: List[Dict[str, Any]]
     total_found: int
+    insights: Optional[TopMoviesInsights] = None
+
+
+class GenreTrendsInsights(BaseModel):
+    """Insights for genre trends analysis"""
+    summary: str
+    most_popular_genre: str
+    highest_rated_genre: str
+    key_trends: List[str]
+    recommendation: str
 
 
 class GenreTrendsResponse(BaseModel):
     status: str
     message: str
     genre_analysis: Dict[str, Any]
+    insights: Optional[GenreTrendsInsights] = None
 
 
 class UserStatisticsRequest(BaseModel):
@@ -90,11 +110,40 @@ class AnomalyDetectionRequest(BaseModel):
     )
 
 
+class ClusteringInsights(BaseModel):
+    """Insights for clustering analysis"""
+    quality_assessment: str
+    interpretation: str
+    largest_segment: str
+    most_active_segment: str
+    business_value: str
+    recommendation: str
+
+
+class TrendAnalysisInsights(BaseModel):
+    """Insights for trend analysis"""
+    trend_interpretation: str
+    stability_assessment: str
+    key_finding: str
+    implication: str
+    recommendation: str
+
+
+class AnomalyInsights(BaseModel):
+    """Insights for anomaly detection"""
+    detection_summary: str
+    interpretation: str
+    key_patterns: List[str]
+    business_impact: str
+    recommendation: str
+
+
 class AdvancedAnalyticsResponse(BaseModel):
     """Generic response model for advanced analytics endpoints"""
     status: str = Field(default="success")
     analysis_type: str = Field(..., description="Type of analysis performed")
     result: Dict[str, Any] = Field(..., description="Analysis results")
+    insights: Optional[Dict[str, Any]] = None
 
 
 class RatingSentimentRequest(BaseModel):
@@ -116,8 +165,18 @@ class RatingSentimentRequest(BaseModel):
     )
 
 
+class SentimentInsights(BaseModel):
+    """Insights for sentiment analysis"""
+    dominant_sentiment: str
+    interpretation: str
+    health_score: str
+    key_findings: List[str]
+    recommendation: str
+
+
 class RatingSentimentResponse(BaseModel):
     """Response model for rating-based sentiment analysis"""
     status: str = Field(default="success")
     message: str
     sentiment_analysis: Dict[str, Any]
+    insights: Optional[SentimentInsights] = None

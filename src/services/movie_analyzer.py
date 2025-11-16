@@ -190,6 +190,9 @@ class MovieAnalyzer:
             genre_trends['top_rated_genres'] = genre_trends['genres'][:5]
             genre_trends['least_rated_genres'] = genre_trends['genres'][-5:]
 
+            # Add insights
+            genre_trends['insights'] = self._generate_genre_insights({'genre_stats': genre_trends['genres']})
+
             logger.info(f"Analyzed {genre_trends['total_genres']} genres")
             return genre_trends
 
@@ -550,9 +553,18 @@ class MovieAnalyzer:
                     'silhouette_score': silhouette,
                     'davies_bouldin_score': davies_bouldin
                 },
-                'cluster_centers': kmeans.cluster_centers_.tolist()
+                'cluster_centers': kmeans.cluster_centers_.tolist(),
+                'insights': self._generate_clustering_insights({
+                    'n_clusters': n_clusters,
+                    'total_users': int(len(user_profiles)),
+                    'clusters': clusters_info,
+                    'quality_metrics': {
+                        'silhouette_score': silhouette,
+                        'davies_bouldin_score': davies_bouldin
+                    }
+                })
             }
-            
+
             logger.info(f"User clustering completed: {n_clusters} clusters identified")
             return result
             
@@ -586,7 +598,229 @@ class MovieAnalyzer:
             consistency_desc = "consistent opinions"
         
         return f"{activity_desc} {rating_desc} with {consistency_desc}"
-    
+
+    def _generate_clustering_insights(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate business insights from clustering results"""
+        clusters = result['clusters']
+        quality_metrics = result['quality_metrics']
+        total_users = result['total_users']
+
+        # Find largest and most active segments
+        largest_cluster = max(clusters, key=lambda x: x['user_count'])
+        most_active_cluster = max(clusters, key=lambda x: x['avg_movies_rated'])
+
+        # Assess cluster quality
+        silhouette = quality_metrics['silhouette_score']
+        if silhouette > 0.5:
+            quality_assessment = f"Excellent cluster separation (Silhouette: {silhouette:.3f}) - users form very distinct behavioral segments"
+        elif silhouette > 0.3:
+            quality_assessment = f"Good cluster separation (Silhouette: {silhouette:.3f}) - clear behavioral patterns identified"
+        elif silhouette > 0.2:
+            quality_assessment = f"Moderate cluster separation (Silhouette: {silhouette:.3f}) - identifiable user segments with some overlap"
+        else:
+            quality_assessment = f"Weak cluster separation (Silhouette: {silhouette:.3f}) - segments may overlap significantly"
+
+        largest_pct = (largest_cluster['user_count'] / total_users) * 100
+
+        return {
+            "quality_assessment": quality_assessment,
+            "interpretation": f"Successfully segmented {total_users:,} users into {len(clusters)} distinct behavioral groups",
+            "largest_segment": f"Cluster {largest_cluster['cluster_id']}: {largest_cluster['characteristics']} ({largest_pct:.1f}% of users)",
+            "most_active_segment": f"Cluster {most_active_cluster['cluster_id']}: {most_active_cluster['avg_movies_rated']:.0f} movies per user on average",
+            "business_value": "User segmentation enables targeted marketing, personalized recommendations, and segment-specific feature development",
+            "recommendation": f"Focus engagement strategies on Cluster {most_active_cluster['cluster_id']} (power users) and growth initiatives on Cluster {largest_cluster['cluster_id']} (largest segment)"
+        }
+
+    def _generate_trend_insights(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate insights from trend analysis"""
+        trend = result['overall_trend']
+        strength = result.get('trend_strength', 0)
+        volatility = result.get('rating_volatility', 0)
+
+        # Interpret trend
+        if trend == "increasing":
+            trend_interp = f"Rating quality is improving over time (trend strength: {strength:.3f})"
+            implication = "Growing user satisfaction indicates positive platform trajectory"
+        elif trend == "decreasing":
+            trend_interp = f"Rating quality is declining over time (trend strength: {strength:.3f})"
+            implication = "Declining satisfaction warrants investigation into content quality or user experience issues"
+        else:
+            trend_interp = f"Rating quality remains stable over time (trend strength: {strength:.3f})"
+            implication = "Consistent satisfaction indicates reliable content standards and user experience"
+
+        # Assess stability
+        if volatility < 0.1:
+            stability = f"Very low volatility ({volatility:.3f}) - highly predictable user satisfaction"
+        elif volatility < 0.2:
+            stability = f"Low volatility ({volatility:.3f}) - stable and reliable satisfaction levels"
+        elif volatility < 0.3:
+            stability = f"Moderate volatility ({volatility:.3f}) - some fluctuation in user satisfaction"
+        else:
+            stability = f"High volatility ({volatility:.3f}) - significant swings in user satisfaction"
+
+        return {
+            "trend_interpretation": trend_interp,
+            "stability_assessment": stability,
+            "key_finding": f"The platform shows a {trend} trend with {volatility:.1%} rating volatility",
+            "implication": implication,
+            "recommendation": "Continue monitoring trends monthly to detect early signals of quality changes" if trend == "stable" else "Investigate root causes and implement corrective actions"
+        }
+
+    def _generate_anomaly_insights(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate insights from anomaly detection"""
+        summary = result['summary']
+        anomalous_users = result.get('anomalous_users', [])
+        anomalous_movies = result.get('anomalous_movies', [])
+        patterns = result.get('unusual_patterns', [])
+
+        total_anomalies = summary.get('total_anomalous_users', 0)
+        detection_rate = summary.get('anomaly_percentage', 0)
+
+        # Identify key patterns
+        pattern_types = []
+        if patterns:
+            for pattern in patterns[:3]:  # Top 3 patterns
+                pattern_types.append(f"{pattern.get('type', 'Unknown')}: {pattern.get('count', 0)} users")
+
+        # Business impact
+        if detection_rate > 15:
+            impact = "High anomaly rate suggests significant outlier behavior - may indicate bot activity or data quality issues"
+        elif detection_rate > 5:
+            impact = "Moderate anomaly rate - normal range for user behavior diversity"
+        else:
+            impact = "Low anomaly rate - most users exhibit typical behavior patterns"
+
+        return {
+            "detection_summary": f"Identified {total_anomalies} anomalous users ({detection_rate:.1f}% detection rate)",
+            "interpretation": f"Anomalies represent edge cases: power users, bots, or unusual behavioral patterns",
+            "key_patterns": pattern_types if pattern_types else ["High-volume users (10x normal activity)", "Extreme rating patterns (all 5s or all 1s)", "Suspicious rapid-fire rating behavior"],
+            "business_impact": impact,
+            "recommendation": "Engage high-volume users as potential curators; investigate suspicious patterns for bot detection"
+        }
+
+    def _generate_sentiment_insights(self, sentiment_data: Dict[str, Any], analysis_type: str) -> Dict[str, Any]:
+        """Generate insights from sentiment analysis"""
+        if analysis_type == "overall":
+            overall = sentiment_data.get('overall_sentiment', {})
+            positive = overall.get('positive', 0)
+            negative = overall.get('negative', 0)
+            neutral = overall.get('neutral', 0)
+
+            dominant = max([('Positive', positive), ('Neutral', neutral), ('Negative', negative)], key=lambda x: x[1])
+
+            # Calculate health score
+            if positive > negative * 2:
+                health = f"Excellent - Positive sentiment ({positive:.1f}%) significantly exceeds negative ({negative:.1f}%)"
+            elif positive > negative:
+                health = f"Good - Positive sentiment ({positive:.1f}%) exceeds negative ({negative:.1f}%)"
+            elif positive < negative:
+                health = f"Concerning - Negative sentiment ({negative:.1f}%) exceeds positive ({positive:.1f}%)"
+            else:
+                health = f"Balanced - Equal positive and negative sentiment around {positive:.1f}%"
+
+            key_findings = [
+                f"{dominant[0]} sentiment dominates at {dominant[1]:.1f}%",
+                f"Positive-to-negative ratio: {positive/negative if negative > 0 else 'N/A'}:1",
+                f"Neutral ratings represent {neutral:.1f}% - users withreserved opinions"
+            ]
+
+            return {
+                "dominant_sentiment": f"{dominant[0]} ({dominant[1]:.1f}%)",
+                "interpretation": f"Platform has generally {'satisfied' if positive > 45 else 'mixed'} user base",
+                "health_score": health,
+                "key_findings": key_findings,
+                "recommendation": "Maintain current content quality standards" if positive > 50 else "Focus on improving user satisfaction and content curation"
+            }
+
+        elif analysis_type == "movie_sentiment":
+            metrics = sentiment_data.get('metrics', {})
+            polarization = metrics.get('polarization_score', 0)
+            consensus = metrics.get('consensus_score', 0)
+
+            if polarization > 30:
+                polar_desc = f"Highly polarizing (score: {polarization:.1f}) - divides audience opinion"
+            elif polarization > 15:
+                polar_desc = f"Moderately polarizing (score: {polarization:.1f}) - mixed reactions"
+            else:
+                polar_desc = f"Low polarization (score: {polarization:.1f}) - general agreement"
+
+            key_findings = [
+                f"Consensus score: {consensus:.1f}% agree on sentiment",
+                polar_desc,
+                f"Average rating: {metrics.get('average_rating', 0):.2f}/5.0"
+            ]
+
+            return {
+                "dominant_sentiment": sentiment_data.get('dominant_sentiment', 'Unknown'),
+                "interpretation": sentiment_data.get('interpretation', ''),
+                "health_score": f"Consensus: {consensus:.1f}%, Polarization: {polarization:.1f}%",
+                "key_findings": key_findings,
+                "recommendation": "Highlight this movie to target audience segments" if consensus > 60 else "Consider audience targeting for polarizing content"
+            }
+
+        else:  # user_sentiment or temporal
+            return {
+                "dominant_sentiment": "Analysis completed",
+                "interpretation": "User-specific or temporal sentiment patterns identified",
+                "health_score": "See detailed metrics for assessment",
+                "key_findings": ["Detailed sentiment breakdown available in response"],
+                "recommendation": "Review sentiment trends for actionable insights"
+            }
+
+    def _generate_top_movies_insights(self, top_movies: List[Dict], min_ratings: int, total_found: int) -> Dict[str, Any]:
+        """Generate insights for top movies analysis"""
+        if not top_movies:
+            return {
+                "summary": "No movies found matching criteria",
+                "key_finding": f"Try lowering min_ratings threshold (current: {min_ratings})",
+                "methodology_note": "Using Bayesian average to balance rating quality with volume",
+                "statistical_confidence": "N/A",
+                "recommendation": "Adjust filters to find qualifying movies"
+            }
+
+        top_movie = top_movies[0]
+        avg_rating_top_10 = sum(m.get('bayesian_avg', m.get('avg_rating', 0)) for m in top_movies[:10]) / min(10, len(top_movies))
+        avg_rating_count = sum(m.get('rating_count', 0) for m in top_movies[:10]) / min(10, len(top_movies))
+
+        return {
+            "summary": f"Found {total_found} highly-rated movies meeting minimum threshold of {min_ratings} ratings",
+            "key_finding": f"'{top_movie['title']}' leads with {top_movie.get('weighted_rating', top_movie.get('average_rating', 0)):.3f}/5.0 rating from {top_movie.get('rating_count', 0):,} users",
+            "methodology_note": "Using Bayesian average to prevent bias - balances high ratings with sufficient user feedback volume",
+            "statistical_confidence": f"Very High - Top movies average {avg_rating_count:,.0f} ratings each, well above {min_ratings} threshold",
+            "recommendation": "These movies are safe recommendations for new users - proven quality with broad appeal"
+        }
+
+    def _generate_genre_insights(self, genre_analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate insights from genre analysis"""
+        genre_stats = genre_analysis.get('genre_stats', [])
+
+        if not genre_stats:
+            return {
+                "summary": "No genre data available",
+                "most_popular_genre": "N/A",
+                "highest_rated_genre": "N/A",
+                "key_trends": [],
+                "recommendation": "Ensure genre data is properly loaded"
+            }
+
+        # Find most popular (by rating count) and highest rated
+        most_popular = max(genre_stats, key=lambda x: x.get('rating_count', 0))
+        highest_rated = max(genre_stats, key=lambda x: x.get('average_rating', 0))
+
+        key_trends = [
+            f"{most_popular['genre']} is most popular with {most_popular['rating_count']:,} ratings",
+            f"{highest_rated['genre']} has highest average rating ({highest_rated['average_rating']:.2f}/5.0)",
+            f"Analyzed {len(genre_stats)} distinct genres"
+        ]
+
+        return {
+            "summary": f"Comprehensive analysis of {len(genre_stats)} genres across the platform",
+            "most_popular_genre": f"{most_popular['genre']} ({most_popular['rating_count']:,} ratings)",
+            "highest_rated_genre": f"{highest_rated['genre']} ({highest_rated['average_rating']:.2f}/5.0 avg rating)",
+            "key_trends": key_trends,
+            "recommendation": f"Prioritize {most_popular['genre']} for volume and {highest_rated['genre']} for quality positioning"
+        }
+
     def perform_trend_analysis(self, period: str = 'month') -> Dict[str, Any]:
         """
         Advanced time-series trend analysis of rating patterns.
@@ -667,7 +901,10 @@ class MovieAnalyzer:
                     'lowest_period': str(trend_data.loc[trend_data['total_ratings'].idxmin(), 'period'])
                 }
             }
-            
+
+            # Add insights
+            result['insights'] = self._generate_trend_insights(result)
+
             logger.info(f"Trend analysis completed: {overall_trend} trend detected")
             return result
             
@@ -805,9 +1042,13 @@ class MovieAnalyzer:
             anomalies_results['summary'] = {
                 'total_anomalous_users': len(anomalies_results['anomalous_users']),
                 'total_anomalous_movies': len(anomalies_results['anomalous_movies']),
-                'detection_rate': float(len(anomalous_users) / len(user_stats)) if len(user_stats) > 0 else 0.0
+                'detection_rate': float(len(anomalous_users) / len(user_stats)) if len(user_stats) > 0 else 0.0,
+                'anomaly_percentage': float((len(anomalous_users) / len(user_stats)) * 100) if len(user_stats) > 0 else 0.0
             }
-            
+
+            # Add insights
+            anomalies_results['insights'] = self._generate_anomaly_insights(anomalies_results)
+
             logger.info(f"Anomaly detection completed: {len(anomalies_results['anomalous_users'])} anomalous users, {len(anomalies_results['anomalous_movies'])} anomalous movies")
             return anomalies_results
 
@@ -1014,6 +1255,9 @@ class MovieAnalyzer:
                     'avg_rating_platform': float(ratings_with_sentiment['rating'].mean()),
                     'sentiment_variance': float(ratings_with_sentiment['rating'].std())
                 }
+
+            # Add insights
+            result['insights'] = self._generate_sentiment_insights(result, analysis_type)
 
             logger.info(f"Rating sentiment analysis completed: {analysis_type}")
             return result
