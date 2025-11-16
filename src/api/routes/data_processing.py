@@ -211,7 +211,7 @@ async def load_data(request: LoadDataRequest) -> LoadDataResponse:
             output_file=str(output_file),
             rows=len(df),
             columns=list(df.columns),
-            sample=df.head(5).to_dict(orient='records')
+            data=df.to_dict(orient='records')
         )
     except DataLoadError as e:
         logger.error(f"Load error: {str(e)}")
@@ -260,7 +260,7 @@ async def clean_data(request: CleanDataRequest) -> CleanDataResponse:
             final_rows=final_rows,
             rows_removed=initial_rows - final_rows,
             columns=list(cleaned_df.columns),
-            sample=cleaned_df.head(5).to_dict(orient='records')
+            data=cleaned_df.to_dict(orient='records')
         )
     except DataLoadError as e:
         logger.error(f"Load error: {str(e)}")
@@ -411,8 +411,7 @@ async def filter_data(request: FilterDataRequest) -> FilterDataResponse:
                     combined_results["individual_dataset_results"][dataset_name] = {
                         "original_rows": original_rows,
                         "filtered_rows": filtered_rows,
-                        "data": filtered_df.to_dict(orient='records'),
-                        "sample": filtered_df.head(10).to_dict(orient='records')
+                        "data": filtered_df.to_dict(orient='records')
                     }
                     logger.info(f"Filtered {dataset_name}: {original_rows} -> {filtered_rows} rows")
                 else:
@@ -428,8 +427,7 @@ async def filter_data(request: FilterDataRequest) -> FilterDataResponse:
                 original_rows=combined_results["total_original_rows"],
                 filtered_rows=combined_results["total_filtered_rows"],
                 filters_applied=filters,
-                data=combined_results,
-                sample=combined_results
+                data=combined_results
             )
         else:
             cleaned_file: Path = Path(settings.data_processed_path) / f"{request.dataset}_cleaned.csv"
@@ -447,8 +445,7 @@ async def filter_data(request: FilterDataRequest) -> FilterDataResponse:
                 original_rows=len(df),
                 filtered_rows=len(filtered_df),
                 filters_applied=filters,
-                data=filtered_df.to_dict(orient='records'),
-                sample=filtered_df.head(10).to_dict(orient='records')
+                data=filtered_df.to_dict(orient='records')
             )
     except DataLoadError as e:
         logger.error(f"Load error: {str(e)}")

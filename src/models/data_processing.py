@@ -23,7 +23,7 @@ class LoadDataResponse(BaseModel):
     output_file: str
     rows: int
     columns: List[str]
-    sample: List[Dict[str, Any]]
+    data: List[Dict[str, Any]]
 
 
 class CleanDataRequest(BaseModel):
@@ -39,7 +39,7 @@ class CleanDataResponse(BaseModel):
     final_rows: int
     rows_removed: int
     columns: List[str]
-    sample: List[Dict[str, Any]]
+    data: List[Dict[str, Any]]
 
 
 class AggregateStatsRequest(BaseModel):
@@ -71,7 +71,6 @@ class FilterDataResponse(BaseModel):
     filtered_rows: int
     filters_applied: Dict[str, Any]
     data: Any
-    sample: Any
 
 
 class ExportDataRequest(BaseModel):
