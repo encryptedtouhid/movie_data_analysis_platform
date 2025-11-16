@@ -252,6 +252,53 @@ async def home():
         </header>
 
         <div class="section">
+            <h2>Data Processing Endpoints</h2>
+            <div class="endpoint-grid">
+                <div class="endpoint-card" onclick="callEndpoint('/api/v1/dataprocess/process_all_data', 'POST')">
+                    <h3>Process All Data</h3>
+                    <p>Convert, load, clean, and analyze all datasets</p>
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/v1/dataprocess/process_all_data</span>
+                </div>
+
+                <div class="endpoint-card" onclick="callEndpoint('/api/v1/dataprocess/load_data', 'POST', {{dataset: 'ratings'}})">
+                    <h3>Load Data</h3>
+                    <p>Load specific dataset (movies, ratings, tags, users)</p>
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/v1/dataprocess/load_data</span>
+                </div>
+
+                <div class="endpoint-card" onclick="callEndpoint('/api/v1/dataprocess/clean_data', 'POST', {{dataset: 'ratings'}})">
+                    <h3>Clean Data</h3>
+                    <p>Remove duplicates and handle missing values</p>
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/v1/dataprocess/clean_data</span>
+                </div>
+
+                <div class="endpoint-card" onclick="callEndpoint('/api/v1/dataprocess/aggregate_statistics', 'POST', {{dataset: 'all'}})">
+                    <h3>Aggregate Statistics</h3>
+                    <p>Calculate comprehensive statistics for datasets</p>
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/v1/dataprocess/aggregate_statistics</span>
+                </div>
+
+                <div class="endpoint-card" onclick="callEndpoint('/api/v1/dataprocess/filter_data', 'POST', {{dataset: 'ratings', min_rating: 4.0, limit: 100}})">
+                    <h3>Filter Data</h3>
+                    <p>Apply filters to datasets (rating, genre, year, etc.)</p>
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/v1/dataprocess/filter_data</span>
+                </div>
+
+                <div class="endpoint-card" onclick="callEndpoint('/api/v1/dataprocess/export_data', 'POST', {{dataset: 'ratings', format: 'json', limit: 50}})">
+                    <h3>Export Data</h3>
+                    <p>Export datasets to CSV or JSON format</p>
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/v1/dataprocess/export_data</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
             <h2>Analysis Endpoints</h2>
             <div class="endpoint-grid">
                 <div class="endpoint-card" onclick="callEndpoint('/api/v1/analysis/top_movies', 'POST', {{limit: 20, min_ratings: 50}})">
