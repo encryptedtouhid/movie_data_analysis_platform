@@ -1,0 +1,85 @@
+[flake8]
+# Flake8 configuration for Movie Data Analysis Platform
+
+# Maximum line length
+max-line-length = 120
+
+# Exclude directories and files
+exclude =
+    .git,
+    __pycache__,
+    .venv,
+    venv,
+    env,
+    .eggs,
+    *.egg,
+    build,
+    dist,
+    .pytest_cache,
+    .mypy_cache,
+    .tox,
+    docs,
+    .idea,
+    .vscode,
+    node_modules,
+    migrations,
+    data/
+
+# Error codes to ignore
+ignore =
+    # E203: whitespace before ':' (conflicts with black)
+    E203,
+    # E266: too many leading '#' for block comment
+    E266,
+    # E501: line too long (handled by black)
+    E501,
+    # W503: line break before binary operator (conflicts with black)
+    W503,
+    # W504: line break after binary operator
+    W504,
+    # E402: module level import not at top of file
+    # E402,
+    # F401: module imported but unused (sometimes needed for __init__.py)
+    # F401,
+
+# Maximum complexity
+max-complexity = 15
+
+# Per-file ignores
+per-file-ignores =
+    # __init__.py files can have unused imports
+    __init__.py:F401,F403
+    # Test files can have unused imports and long lines
+    tests/*:F401,F811,E501
+    # Ignore import errors in conftest
+    conftest.py:E402,F401
+
+# Docstring conventions
+docstring-convention = google
+
+# Enable specific error codes
+select =
+    # pycodestyle errors
+    E,
+    # pycodestyle warnings
+    W,
+    # pyflakes
+    F,
+    # McCabe complexity
+    C,
+    # naming conventions
+    N,
+    # docstrings
+    D,
+
+# Count errors
+count = True
+
+# Show source code
+show-source = True
+
+# Show error codes in output
+statistics = True
+
+# Format for error messages
+format = %(path)s:%(row)d:%(col)d: %(code)s %(text)s

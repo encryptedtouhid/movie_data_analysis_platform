@@ -19,6 +19,9 @@ openpyxl>=3.0.0
 
 # Development and Quality
 pytest
+pytest-cov
 flake8
 black
+isort
 mypy
+psutil

@@ -539,6 +539,9 @@ async def export_data(request: ExportDataRequest) -> ExportDataResponse:
             format=request.format.lower()
         )
 
+    except HTTPException:
+        # Re-raise HTTPException as-is (already has correct status code)
+        raise
     except DataLoadError as e:
         logger.error(f"Load error: {str(e)}")
         raise HTTPException(status_code=404, detail=f"Load error: {str(e)}")
