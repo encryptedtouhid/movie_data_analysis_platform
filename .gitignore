@@ -33,7 +33,15 @@ ENV/
 
 # IDE
 .vscode/
-.idea/
+# PyCharm
+.idea/*
+!.idea/runConfigurations/
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/usage.statistics.xml
+.idea/dictionaries
+.idea/shelf
+# Vim
 *.swp
 *.swo
 *~
@@ -64,3 +72,6 @@ data/processed/*
 !data/processed/.gitkeep
 data/temp/*
 !data/temp/.gitkeep
+/data/visualizations
+/.idea
+/data/raw
