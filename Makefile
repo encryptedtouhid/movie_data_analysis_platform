@@ -184,3 +184,47 @@ docs: ## Generate documentation
 
 docs-serve: ## Serve documentation locally
 	@echo "$(YELLOW)Documentation server not configured yet$(NC)"
+
+##@ Package
+
+build: clean ## Build distribution packages
+	@echo "$(GREEN)Building distribution packages...$(NC)"
+	python -m pip install --upgrade build
+	python -m build
+	@echo "$(GREEN)Build complete! Check dist/ directory$(NC)"
+
+build-check: ## Check built packages
+	@echo "$(GREEN)Checking built packages...$(NC)"
+	python -m pip install --upgrade twine
+	python -m twine check dist/*
+	@echo "$(GREEN)Package check complete!$(NC)"
+
+install-local: ## Install package locally in editable mode
+	@echo "$(GREEN)Installing package in editable mode...$(NC)"
+	pip install -e .
+	@echo "$(GREEN)Package installed! Try: movie-analysis --help$(NC)"
+
+install-local-dev: ## Install package with dev dependencies
+	@echo "$(GREEN)Installing package with dev dependencies...$(NC)"
+	pip install -e ".[dev]"
+	@echo "$(GREEN)Dev environment ready!$(NC)"
+
+uninstall: ## Uninstall the package
+	@echo "$(YELLOW)Uninstalling package...$(NC)"
+	pip uninstall -y movie-data-analysis-platform
+	@echo "$(GREEN)Package uninstalled.$(NC)"
+
+publish-test: build build-check ## Publish to TestPyPI
+	@echo "$(YELLOW)Publishing to TestPyPI...$(NC)"
+	python -m twine upload --repository testpypi dist/*
+	@echo "$(GREEN)Published to TestPyPI!$(NC)"
+
+publish: build build-check ## Publish to PyPI
+	@echo "$(RED)WARNING: This will publish to PyPI!$(NC)"
+	@read -p "Are you sure? [y/N] " -n 1 -r; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		python -m twine upload dist/*; \
+		echo "$(GREEN)Published to PyPI!$(NC)"; \
+	else \
+		echo "$(YELLOW)Cancelled.$(NC)"; \
+	fi

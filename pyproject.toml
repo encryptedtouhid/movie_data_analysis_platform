@@ -8,19 +8,28 @@ version = "1.0.0"
 description = "Advanced data analysis platform for MovieLens dataset with ML recommendations"
 readme = "README.md"
 requires-python = ">=3.9"
+license = {text = "MIT"}
 authors = [
     {name = "Your Name", email = "your.email@example.com"}
 ]
-keywords = ["data-analysis", "machine-learning", "movies", "recommendation-system", "fastapi"]
+maintainers = [
+    {name = "Your Name", email = "your.email@example.com"}
+]
+keywords = ["data-analysis", "machine-learning", "movies", "recommendation-system", "fastapi", "ml", "analytics"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Information Analysis",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Framework :: FastAPI",
+    "Framework :: Pytest",
+    "Operating System :: OS Independent",
 ]
 
 dependencies = [
@@ -29,12 +38,13 @@ dependencies = [
     "scikit-learn>=1.0.0",
     "fastapi>=0.85.0",
     "pydantic>=1.10.0",
-    "uvicorn>=0.18.0",
+    "uvicorn[standard]>=0.18.0",
     "python-dotenv>=0.19.0",
     "matplotlib>=3.5.0",
     "seaborn>=0.11.0",
     "plotly>=5.0.0",
     "openpyxl>=3.0.0",
+    "psutil>=5.9.0",
 ]
 
 [project.optional-dependencies]
@@ -47,6 +57,7 @@ dev = [
     "isort>=5.11.0",
     "mypy>=0.990",
     "pre-commit>=2.20.0",
+    "httpx>=0.23.0",
 ]
 
 test = [
@@ -56,11 +67,58 @@ test = [
     "httpx>=0.23.0",
 ]
 
+performance = [
+    "pytest-benchmark>=4.0.0",
+    "memory-profiler>=0.60.0",
+    "line-profiler>=4.0.0",
+]
+
+docs = [
+    "sphinx>=5.0.0",
+    "sphinx-rtd-theme>=1.2.0",
+    "sphinx-autodoc-typehints>=1.19.0",
+    "myst-parser>=1.0.0",
+]
+
+jupyter = [
+    "jupyter>=1.0.0",
+    "notebook>=6.5.0",
+    "ipywidgets>=8.0.0",
+]
+
+all = [
+    "movie-data-analysis-platform[dev,test,performance,docs,jupyter]",
+]
+
+[project.scripts]
+movie-analysis = "src.cli:main"
+movie-server = "src.cli:run_server"
+
+[project.entry-points."console_scripts"]
+movie-data-platform = "src.cli:main"
+
 [project.urls]
 Homepage = "https://github.com/yourusername/movie-data-analysis-platform"
 Documentation = "https://github.com/yourusername/movie-data-analysis-platform#readme"
 Repository = "https://github.com/yourusername/movie-data-analysis-platform"
 "Bug Tracker" = "https://github.com/yourusername/movie-data-analysis-platform/issues"
+
+
+# ==============================================================================
+# Setuptools - Package Discovery
+# ==============================================================================
+[tool.setuptools]
+zip-safe = false
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+exclude = ["tests*", "docs*", "*.egg-info"]
+
+[tool.setuptools.package-data]
+"*" = ["*.txt", "*.md", "*.json", "*.yaml", "*.yml"]
+"src" = ["py.typed"]
 
 
 # ==============================================================================
