@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from src.core.config import settings
-from src.api.routes import health, data_processing, analysis, home
+from src.api.routes import health, data_processing, analysis, home, recommendations
 from src.utils.logger import get_logger
 
 logger = get_logger("main_app", "core")
@@ -51,6 +51,12 @@ app.include_router(
     tags=["Analysis"],
 )
 
+app.include_router(
+    recommendations.router,
+    prefix=settings.api_v1_prefix,
+    tags=["ML Recommendations"],
+)
+
 # Mount static files for visualizations
 visualizations_dir = Path(settings.data_processed_path).parent / "visualizations"
 visualizations_dir.mkdir(parents=True, exist_ok=True)
@@ -65,6 +71,17 @@ async def startup_event() -> None:
     logger.info(f"ReDoc available at: http://{settings.host}:{settings.port}/redoc")
     logger.info(f"Health check: http://{settings.host}:{settings.port}{settings.api_v1_prefix}/health")
     logger.info("=" * 50)
+
+    # Pre-initialize ML recommender for faster first requests
+    logger.info("Pre-loading ML recommendation engine...")
+    try:
+        from src.api.routes.recommendations import get_recommender
+        recommender = get_recommender()
+        recommender.initialize()
+        logger.info("✅ ML recommendation engine initialized successfully")
+    except Exception as e:
+        logger.error(f"⚠️  Failed to initialize ML recommender: {str(e)}")
+        logger.warning("ML recommendations will initialize on first use")
 
 
 @app.on_event("shutdown")
