@@ -35,3 +35,7 @@ class DataAggregationError(DataProcessingError):
 
 class DataFilterError(DataProcessingError):
     pass
+
+
+class DataAnalysisError(DataProcessingError):
+    pass

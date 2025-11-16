@@ -6,6 +6,7 @@ from .data_exceptions import (
     DataValidationError,
     DataAggregationError,
     DataFilterError,
+    DataAnalysisError,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "DataValidationError",
     "DataAggregationError",
     "DataFilterError",
+    "DataAnalysisError",
 ]

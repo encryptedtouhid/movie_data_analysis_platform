@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from src.core.config import settings
-from src.api.routes import health, data_processing
+from src.api.routes import health, data_processing, analysis
 from src.utils.logger import get_logger
 
 logger = get_logger("main_app", "core")
@@ -35,6 +37,17 @@ app.include_router(
     prefix=settings.api_v1_prefix + "/dataprocess",
     tags=["Data Processing"],
 )
+
+app.include_router(
+    analysis.router,
+    prefix=settings.api_v1_prefix + "/analysis",
+    tags=["Analysis"],
+)
+
+# Mount static files for visualizations
+visualizations_dir = Path(settings.data_processed_path).parent / "visualizations"
+visualizations_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/visualizations", StaticFiles(directory=str(visualizations_dir)), name="visualizations")
 
 
 @app.on_event("startup")
