@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from src.core.config import settings
-from src.api.routes import health, data_processing, analysis
+from src.api.routes import health, data_processing, analysis, home
 from src.utils.logger import get_logger
 
 logger = get_logger("main_app", "core")
@@ -26,6 +26,13 @@ app.add_middleware(
 )
 
 logger.info("Registering API routers")
+
+# Home page
+app.include_router(
+    home.router,
+    tags=["Home"],
+)
+
 app.include_router(
     health.router,
     prefix=settings.api_v1_prefix,
