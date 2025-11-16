@@ -129,30 +129,61 @@ async def home():
             background: #94a3b8;
             cursor: not-allowed;
         }}
-        .result-container {{
-            margin-top: 24px;
+        .modal-overlay {{
             display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
         }}
-        .result-container.active {{
-            display: block;
+        .modal-overlay.active {{
+            display: flex;
         }}
-        .result-header {{
+        .modal-container {{
+            background: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 1200px;
+            max-height: 90vh;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+        }}
+        .modal-header {{
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
+            padding: 20px;
+            border-bottom: 1px solid #d0d7de;
         }}
-        .result-header h3 {{
-            font-size: 18px;
+        .modal-header h3 {{
+            font-size: 20px;
             font-weight: 600;
+            margin: 0;
         }}
         .close-btn {{
             background: #d0d7de;
             color: #24292f;
-            padding: 4px 12px;
+            padding: 6px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
         }}
         .close-btn:hover {{
             background: #afb8c1;
+        }}
+        .modal-content {{
+            padding: 20px;
+            overflow: auto;
+            flex: 1;
         }}
         .result-content {{
             background: #f6f8fa;
@@ -286,26 +317,42 @@ async def home():
             </div>
         </div>
 
-        <div class="result-container" id="resultContainer">
-            <div class="result-header">
-                <h3>Results</h3>
-                <button class="close-btn" onclick="closeResults()">Close</button>
-            </div>
-            <div class="result-content" id="resultContent"></div>
-        </div>
-
         <div class="footer">
             <div>Movie Data Analysis Platform</div>
             <div>Developed by: <a href="https://github.com/encryptedtouhid" target="_blank">Khaled Md Tuhidul Hossain</a></div>
         </div>
     </div>
 
+    <!-- Modal Popup -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+        <div class="modal-container" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="modalTitle">Results</h3>
+                <button class="close-btn" onclick="closeModal()">Close</button>
+            </div>
+            <div class="modal-content">
+                <div class="result-content" id="resultContent"></div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        function openModal(title = 'Results') {{
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalOverlay').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }}
+
+        function closeModal(event) {{
+            if (event && event.target !== event.currentTarget) return;
+            document.getElementById('modalOverlay').classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }}
+
         async function callEndpoint(endpoint, method, body = null) {{
-            const resultContainer = document.getElementById('resultContainer');
             const resultContent = document.getElementById('resultContent');
 
-            resultContainer.classList.add('active');
+            openModal('Loading Results');
             resultContent.innerHTML = '<div>Loading<span class="loading"></span></div>';
 
             try {{
@@ -323,17 +370,18 @@ async def home():
                 const response = await fetch(endpoint, options);
                 const data = await response.json();
 
+                document.getElementById('modalTitle').textContent = 'Results';
                 resultContent.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
             }} catch (error) {{
+                document.getElementById('modalTitle').textContent = 'Error';
                 resultContent.innerHTML = '<div style="color: #cf222e;">Error: ' + error.message + '</div>';
             }}
         }}
 
         async function callVisualization(type) {{
-            const resultContainer = document.getElementById('resultContainer');
             const resultContent = document.getElementById('resultContent');
 
-            resultContainer.classList.add('active');
+            openModal('Generating Visualization');
             resultContent.innerHTML = '<div>Generating visualization<span class="loading"></span></div>';
 
             try {{
@@ -348,6 +396,14 @@ async def home():
                 const data = await response.json();
 
                 if (data.url) {{
+                    const titles = {{
+                        'dashboard': 'Dashboard Report',
+                        'rating_distribution': 'Rating Distribution',
+                        'genre_popularity': 'Genre Popularity',
+                        'time_series': 'Time Series Analysis'
+                    }};
+                    document.getElementById('modalTitle').textContent = titles[type] || 'Visualization';
+
                     if (type === 'dashboard') {{
                         // For HTML dashboard, open in iframe
                         resultContent.innerHTML = '<iframe src="' + data.url + '"></iframe>';
@@ -356,15 +412,13 @@ async def home():
                         resultContent.innerHTML = '<img src="' + data.url + '" alt="' + type + '">';
                     }}
                 }} else {{
+                    document.getElementById('modalTitle').textContent = 'Results';
                     resultContent.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
                 }}
             }} catch (error) {{
+                document.getElementById('modalTitle').textContent = 'Error';
                 resultContent.innerHTML = '<div style="color: #cf222e;">Error: ' + error.message + '</div>';
             }}
-        }}
-
-        function closeResults() {{
-            document.getElementById('resultContainer').classList.remove('active');
         }}
     </script>
 </body>

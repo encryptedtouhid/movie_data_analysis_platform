@@ -282,7 +282,6 @@ class DataVisualizer:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Movie Data Analysis Dashboard</title>
     <style>
         * {{
             margin: 0;
@@ -398,10 +397,6 @@ class DataVisualizer:
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>Movie Data Analysis Dashboard</h1>
-        </header>
-
         <div class="content">
 """
 
@@ -500,10 +495,6 @@ class DataVisualizer:
         html += """
         </div>
 
-        <div class="footer">
-            <div>Movie Data Analysis Platform</div>
-            <div>Developed by: <a href="https://github.com/encryptedtouhid" target="_blank">Khaled Md Tuhidul Hossain</a></div>
-        </div>
     </div>
 </body>
 </html>
