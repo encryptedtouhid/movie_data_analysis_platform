@@ -1,0 +1,54 @@
+# MANIFEST.in - Package manifest for including non-Python files
+
+# Include documentation
+include README.md
+include LICENSE
+include CONTRIBUTING.md
+include CHANGELOG.md
+include DOCKER.md
+
+# Include configuration files
+include .editorconfig
+include .flake8
+include pytest.ini
+include pyproject.toml
+include setup.py
+include setup.cfg
+include Makefile
+
+# Include data files (but not the actual datasets - too large)
+recursive-include src *.txt
+recursive-include src *.json
+recursive-include src *.yaml
+recursive-include src *.yml
+recursive-include src *.md
+
+# Include type information
+include src/py.typed
+recursive-include src *.pyi
+
+# Include test data (small sample files only)
+recursive-include tests/fixtures *.csv
+recursive-include tests/fixtures *.json
+
+# Exclude unwanted files
+global-exclude __pycache__
+global-exclude *.py[co]
+global-exclude .DS_Store
+global-exclude *.so
+global-exclude .git*
+global-exclude .mypy_cache
+global-exclude .pytest_cache
+global-exclude *.egg-info
+global-exclude .coverage
+
+# Exclude large data directories
+prune data/raw
+prune data/processed
+prune data/visualizations
+prune logs
+prune htmlcov
+prune .venv
+prune venv
+prune dist
+prune build
